@@ -58,14 +58,20 @@
 	const CASH_POINTS_MAX = 1500;
 	let cash = $state<CashPoint[]>([]);
 	let cashView = $state<'chart' | 'table'>('chart');
+	let cashWindow = $state<'match' | '30m' | '15m' | '5m' | '2m'>('match');
 	let cashSeeded = false;
 	let prevMap: string | null = null;
 	let prevMatchSeconds = Infinity;
+	let matchStartAt = $state<number | null>(null);
 
 	async function seedCash(matchSeconds: number) {
 		cashSeeded = true;
 		try {
-			const since = new Date(Date.now() - matchSeconds * 1000).toISOString();
+			const sinceTime = Math.max(
+				Date.now() - matchSeconds * 1000,
+				matchStartAt ?? 0
+			);
+			const since = new Date(sinceTime).toISOString();
 			const r = await api<{ points: CashPoint[] }>(
 				'GET',
 				`/api/servers/${encodeURIComponent(id)}/cash?since=${encodeURIComponent(since)}`
@@ -84,6 +90,7 @@
 		if (restarted) {
 			cash = [];
 			cashSeeded = false;
+			matchStartAt = Date.now();
 		}
 		if (!cashSeeded && s.matchSeconds !== null) void seedCash(s.matchSeconds);
 	}
@@ -231,6 +238,56 @@
 	let factions = $derived.by(() => {
 		const names = (status?.scores ?? []).map((f) => f.name);
 		return to && !names.includes(to) ? [...names, to] : names;
+	});
+
+	function cashTotal(p: CashPoint) {
+		return p.total ?? Object.values(p.factions ?? {}).reduce((sum, v) => sum + v, 0);
+	}
+
+	function currentMatchCash(points: CashPoint[]) {
+		let start = -1;
+		let wasEmpty = true;
+		for (let i = 0; i < points.length; i++) {
+			const hasCash = cashTotal(points[i]) > 0;
+			if (hasCash && wasEmpty) start = i;
+			wasEmpty = !hasCash;
+		}
+		return start >= 0 ? points.slice(start).filter((p) => cashTotal(p) > 0) : [];
+	}
+
+	let filteredCash = $derived.by(() => {
+		const matchCash = currentMatchCash(cash);
+		if (cashWindow === 'match' || matchCash.length === 0) return matchCash;
+		const ms = { '30m': 30 * 60 * 1000, '15m': 15 * 60 * 1000, '5m': 5 * 60 * 1000, '2m': 2 * 60 * 1000 }[cashWindow]!;
+		const cutoff = Date.now() - ms;
+		return matchCash.filter((p) => Date.parse(p.ts) >= cutoff);
+	});
+
+	let cashWindowLoading = $state(false);
+	async function loadCashForWindow(window: typeof cashWindow) {
+		if (cashWindowLoading || cash.length === 0) return;
+		const ms = { match: 24 * 60 * 60 * 1000, '30m': 30 * 60 * 1000, '15m': 15 * 60 * 1000, '5m': 5 * 60 * 1000, '2m': 2 * 60 * 1000 }[window]!;
+		const oldest = Date.parse(cash[0].ts);
+		const neededSince = Date.now() - ms;
+		if (oldest <= neededSince) return;
+		cashWindowLoading = true;
+		try {
+			const since = new Date(neededSince).toISOString();
+			const r = await api<{ points: CashPoint[] }>(
+				'GET',
+				`/api/servers/${encodeURIComponent(id)}/cash?since=${encodeURIComponent(since)}`
+			);
+			const known = new Set(cash.map((p) => p.ts));
+			const newPoints = r.points.filter((p) => !known.has(p.ts));
+			const merged = [...newPoints, ...cash].slice(-CASH_POINTS_MAX);
+			cash = merged;
+		} finally {
+			cashWindowLoading = false;
+		}
+	}
+
+	$effect(() => {
+		void loadCashForWindow(cashWindow);
 	});
 
 	async function sendBroadcast() {
@@ -470,6 +527,13 @@
 		<span class="text-[12px] text-mist-600"
 			>held by connected players this match · one point per observation</span
 		>
+		<span class="join">
+			<button class="btn btn-sm {cashWindow === 'match' ? 'btn-primary' : ''}" onclick={() => (cashWindow = 'match')}>Match</button>
+			<button class="btn btn-sm {cashWindow === '30m' ? 'btn-primary' : ''}" onclick={() => (cashWindow = '30m')}>30m</button>
+			<button class="btn btn-sm {cashWindow === '15m' ? 'btn-primary' : ''}" onclick={() => (cashWindow = '15m')}>15m</button>
+			<button class="btn btn-sm {cashWindow === '5m' ? 'btn-primary' : ''}" onclick={() => (cashWindow = '5m')}>5m</button>
+			<button class="btn btn-sm {cashWindow === '2m' ? 'btn-primary' : ''}" onclick={() => (cashWindow = '2m')}>2m</button>
+		</span>
 		<span class="join ml-auto">
 			<button
 				class="btn btn-sm {cashView === 'chart' ? 'btn-primary' : ''}"
@@ -482,7 +546,7 @@
 		</span>
 	</div>
 	<CashChart
-		points={cash}
+		points={filteredCash}
 		view={cashView}
 		color={(name) => factionColor(name, status?.scores)}
 		emptyText="No cash samples yet. Points appear as the scoreboard refreshes."

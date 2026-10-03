@@ -177,6 +177,14 @@
 								disabled={disabled || locked(f)}
 								onchange={(e) => num(e, f)}
 							/>
+						{:else if f.type === 'time'}
+							<input
+								type="time"
+								class="input max-w-[140px] font-mono tabular"
+								value={String(v)}
+								disabled={disabled || locked(f)}
+								onchange={(e) => set(f, e.currentTarget.value)}
+							/>
 						{:else}
 							<input
 								type="text"

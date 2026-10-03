@@ -161,7 +161,7 @@ export function saneScores(raw: unknown): FactionScore[] {
 		}));
 }
 
-const FACTION_FALLBACK: Record<string, string> = { RED: '#D86060', BLU: '#5B95D8', GRN: '#7BC462' };
+const FACTION_FALLBACK: Record<string, string> = { RED: '#D86060', BLU: '#5B95D8', GRN: '#7BC462', Lonestar: '#5B95D8', Valkyra: '#D86060', Manticore: '#7BC462', White: '#AAAAAA' };
 export function factionColor(
 	faction: string | null | undefined,
 	scores?: FactionScore[] | null

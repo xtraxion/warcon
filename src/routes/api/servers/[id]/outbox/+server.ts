@@ -12,5 +12,5 @@ export const GET = route(async (event) => {
 		param(event, 'id'),
 		'automation.manage'
 	);
-	return apiJson({ ok: true, items: await recentOutbox(env, server.id, 40) });
+	return apiJson({ ok: true, items: await recentOutbox(env, server.id, 200) });
 });

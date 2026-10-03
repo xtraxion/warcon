@@ -886,6 +886,18 @@ async function finish(env: Env, row: OutboxRow, state: Outcome, outcome: string)
 		if (err instanceof LostOwnership) throw err;
 		console.error('[warcon] outbox update', err);
 	}
+	// Welcome whispers are intentionally not retained in the automation history: they are
+	// high-volume noise and do not help diagnose rule actions. Delete only after the terminal
+	// state was persisted, so pending/sending deliveries remain durable.
+	if (row.triggerKind === 'welcome') {
+		try {
+			await withOwnedTransaction(env, (tx) =>
+				tx.delete(outbox).where(eq(outbox.id, row.id))
+			);
+		} catch (err) {
+			console.error('[warcon] welcome outbox cleanup', err);
+		}
+	}
 	// A panel action (a grant, a ban, a flag) can be delivered before the roster is in memory:
 	// audit it from the server row then.
 	const server =

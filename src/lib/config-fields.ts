@@ -2,7 +2,7 @@
 // editor: which section each lives in, its type, default and what applying it means.
 import type { ConfigSection } from './types';
 
-export type FieldType = 'text' | 'number' | 'bool' | 'enum' | 'slider';
+export type FieldType = 'text' | 'number' | 'bool' | 'enum' | 'slider' | 'time';
 export type FieldValue = string | number | boolean;
 export type ApplyState = 'applied' | 'next-match' | 'next-restart' | 'pending';
 
@@ -34,6 +34,7 @@ export const S_KOTH = 'MatchState.Playing.KOTH';
 export const S_STATE = '/Script/WDGame.WDGameStateSession';
 export const S_ROTATION = '/Script/WDGame.WDServerMapRotationSettings';
 export const S_ENGINE = '/Script/Engine.GameSession';
+export const S_LIFECYCLE = '/Script/WDGame.WDServerLifecycleSubsystem';
 
 const JOIN_LIMIT_NOTE = {
 	state: 'next-restart' as const,
@@ -101,6 +102,21 @@ export const FIELDS: ConfigField[] = [
 		def: '',
 		group: 'Server',
 		help: 'Server browser banner: a 1024×256 PNG/JPEG on the server’s image allow-list. Only settable through the config document (the Sponsor image panel above applies it the same way). The server fetches and checks it before advertising it, so it reports as pending until that finishes.'
+	},
+	{
+		key: 'restartTimeUtc',
+		label: 'Restart time (UTC)',
+		type: 'time',
+		section: S_LIFECYCLE,
+		ini: 'RestartTimeUtc',
+		def: '04:00',
+		group: 'Server',
+		appliesFallback: {
+			state: 'next-restart' as const,
+			description:
+				'The restart time is read when the server starts; changing it requires a restart to take effect.'
+		},
+		help: 'Daily server restart time in UTC (HH:MM). Only takes effect after a server restart.'
 	},
 	{
 		key: 'minPlayerCash',
