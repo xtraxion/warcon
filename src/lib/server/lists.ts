@@ -32,6 +32,7 @@ import {
 	serverReserved,
 	servers,
 	steamProfiles,
+	user,
 	type ListEntryRow,
 	type ListRow
 } from './db/schema';
@@ -1024,6 +1025,7 @@ export async function serverListsState(
 				listId: listEntries.listId,
 				steamId: listEntries.steamId,
 				reason: listEntries.reason,
+				addedBy: listEntries.addedBy,
 				addedByName: listEntries.addedByName,
 				addedAt: listEntries.addedAt,
 				expiresAt: listEntries.expiresAt
@@ -1036,6 +1038,16 @@ export async function serverListsState(
 					isNull(listEntries.removedAt)
 				)
 			);
+		// Look up display names for all non-null addedBy users
+		const userIds = [...new Set(entries.map((e) => e.addedBy).filter(Boolean))];
+		const userNames = new Map<string, string>();
+		if (userIds.length) {
+			const rows = await env.db
+				.select({ id: user.id, name: user.name })
+				.from(user)
+				.where(inArray(user.id, userIds));
+			for (const r of rows) userNames.set(r.id, r.name);
+		}
 		for (const e of entries) {
 			if (sourceOf.get(e.steamId) !== e.listId) continue;
 			const b = out.bans[e.steamId];
@@ -1043,7 +1055,7 @@ export async function serverListsState(
 			b.expiresAt = iso(e.expiresAt);
 			b.addedAt = iso(e.addedAt);
 			b.reason = e.reason;
-			if (staff) b.addedByName = e.addedByName;
+			if (staff) b.addedByName = (e.addedBy ? userNames.get(e.addedBy) : null) || e.addedByName || '';
 		}
 	}
 	for (const d of desired.reserved) {
