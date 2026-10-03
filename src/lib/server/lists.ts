@@ -537,7 +537,7 @@ export async function addEntry(
 		reason,
 		expiresAt,
 		addedBy: actor.id,
-		addedByName: actor.username
+		addedByName: actor.name
 	});
 	if (!added)
 		throw new ApiError(409, `${steamId} is already on the ${KIND_LABEL[kind]}.`, 'duplicate');
@@ -581,7 +581,7 @@ export async function removeEntry(
 		.set({
 			removedAt: new Date(),
 			removedBy: actor.id,
-			removedByName: actor.username,
+			removedByName: actor.name,
 			removal: 'manual'
 		})
 		.where(
@@ -635,7 +635,7 @@ export async function addServerEntry(
 		reason,
 		expiresAt,
 		addedBy: actor.id,
-		addedByName: actor.username
+		addedByName: actor.name
 	});
 	if (!added)
 		throw new ApiError(
@@ -680,7 +680,7 @@ export async function removeServerEntry(
 		.set({
 			removedAt: new Date(),
 			removedBy: actor.id,
-			removedByName: actor.username,
+			removedByName: actor.name,
 			removal: 'manual'
 		})
 		.where(
@@ -884,7 +884,7 @@ export async function importEntries(
 				steamId: p.steamId,
 				reason,
 				addedBy: actor.id,
-				addedByName: actor.username
+				addedByName: actor.name
 			});
 			for (const s of c.servers)
 				await tx
