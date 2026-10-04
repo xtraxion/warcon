@@ -415,10 +415,9 @@
 									<span class="text-mist-400">Permanent</span>
 								{/if}
 							</td>
-							<td class="text-[12.5px] text-mist-400">{#if k.message}{k.message}{:else}—{/if}</td>
 						</tr>
 					{:else}
-						<tr><td colspan="6" class="py-6 text-center text-mist-600">No bans.</td></tr>
+						<tr><td colspan="5" class="py-6 text-center text-mist-600">No bans.</td></tr>
 					{/each}
 				</tbody>
 			</table>
@@ -481,7 +480,6 @@
 						<SortHeader sort={kickSort} key="by">By</SortHeader>
 						<SortHeader sort={kickSort} key="reason">Reason</SortHeader>
 						<SortHeader sort={kickSort} key="outcome">Outcome</SortHeader>
-						<th>Server response</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -511,10 +509,9 @@
 									<Badge>{k.outcome}</Badge>
 								{/if}
 							</td>
-							<td class="text-[12.5px] text-mist-400">{#if k.message}{k.message}{:else}—{/if}</td>
 						</tr>
 					{:else}
-						<tr><td colspan="6" class="py-6 text-center text-mist-600">No kicks recorded.</td></tr>
+						<tr><td colspan="5" class="py-6 text-center text-mist-600">No kicks recorded.</td></tr>
 					{/each}
 				</tbody>
 			</table>
