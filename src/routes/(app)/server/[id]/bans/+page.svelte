@@ -259,7 +259,8 @@
 		player: { by: (k) => steam[k.target]?.name || k.target },
 		kickedAt: { by: (k) => String(k.ts), dir: 'desc' },
 		by: { by: (k) => k.actorName },
-		reason: { by: (k) => k.message }
+		reason: { by: (k) => k.message },
+		outcome: { by: (k) => k.outcome }
 	});
 	let kickRows = $derived(
 		kickSort.sorted(
