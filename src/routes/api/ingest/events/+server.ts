@@ -9,6 +9,10 @@ import { gateway } from '$lib/server/gateway';
 import { ingestBatch, resolveFeedToken } from '$lib/server/feed';
 import { MAX_BODY_BYTES, parseFeedBearer } from '$lib/server/feed-core';
 import { feedKills, feedPosts } from '$lib/server/metrics';
+import { getServer } from '$lib/server/access';
+import { queueEvent } from '$lib/server/json-webhook-queue';
+import { killFeedBatch } from '$lib/server/json-webhook-events';
+import { forwardToRelays } from '$lib/server/feed-relay';
 
 /** The game sends about thirty posts a minute at most; a host stuck in a loop is cut off here. */
 const POSTS_PER_MINUTE = 1200;
@@ -41,6 +45,26 @@ export const POST = route(async (event) => {
 	feedKills.inc({ result: 'duplicate' }, r.duplicates);
 	// Browsers watching the server see them at once; the worker's kill rules get their turn.
 	if (r.kills.length) gateway().killsIngested(env, serverId, r.kills);
+	// Forward the batch to any org webhook that ticks kill_feed, and to per-server relays.
+	const server = await getServer(env, serverId);
+	if (server) {
+		const batch = (body as { serverId?: string; serverName?: string; events?: unknown[] }) || {};
+		try {
+			await queueEvent(env.db, killFeedBatch({
+				orgId: server.orgId,
+				server: { id: server.id, name: server.name },
+				batch: {
+					instanceId: String(batch.serverId ?? ''),
+					serverName: String(batch.serverName ?? ''),
+					events: Array.isArray(batch.events) ? batch.events : []
+				}
+			}));
+			// Also fire-and-forget to per-server relays.
+			void forwardToRelays(env, server.id, batch);
+		} catch (e) {
+			console.error('[warcon] kill feed batch queueEvent', e);
+		}
+	}
 	return apiJson({ ok: true, accepted: r.accepted, skipped: r.skipped, duplicates: r.duplicates });
 });
 

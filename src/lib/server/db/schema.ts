@@ -776,6 +776,25 @@ export const jsonWebhooks = pgTable(
  * A queue of its own, apart from the outbox on purpose: a receiver that is slow or down costs this
  * queue, never a game action. Rows are kept, like the outbox's.
  */
+/**
+ * Per-server kill feed relays: configurable HTTP endpoints to forward kill batches to.
+ */
+export const serverFeedRelays = pgTable(
+	'server_feed_relays',
+	{
+		id: text('id').primaryKey(),
+		serverId: text('server_id')
+			.notNull()
+			.references(() => servers.id, { onDelete: 'cascade' }),
+		label: text('label').notNull().default(''),
+		url: text('url').notNull(),
+		enabled: boolean('enabled').notNull().default(true),
+		createdAt: ts('created_at').notNull().defaultNow(),
+		updatedAt: ts('updated_at').notNull().defaultNow()
+	},
+	(t) => [index('server_feed_relays_server_idx').on(t.serverId)]
+);
+
 export const jsonWebhookPosts = pgTable(
 	'json_webhook_posts',
 	{
@@ -1089,6 +1108,7 @@ export type TriggerRow = typeof triggers.$inferSelect;
 export type WebhookRow = typeof webhooks.$inferSelect;
 export type JsonWebhookRow = typeof jsonWebhooks.$inferSelect;
 export type JsonWebhookPostRow = typeof jsonWebhookPosts.$inferSelect;
+export type ServerFeedRelayRow = typeof serverFeedRelays.$inferSelect;
 export type PlayerNoteRow = typeof playerNotes.$inferSelect;
 export type PlayerMarkRow = typeof playerMarks.$inferSelect;
 export type ListRow = typeof lists.$inferSelect;

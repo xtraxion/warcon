@@ -5,10 +5,11 @@
 // builder, one queueEvent call, and its body in the README.
 import type { JsonWebhookRow } from './db/schema';
 
-export const JSON_WEBHOOK_EVENTS = ['seed_reward'] as const;
+export const JSON_WEBHOOK_EVENTS = ['seed_reward', 'kill_feed'] as const;
 export type JsonWebhookEvent = (typeof JSON_WEBHOOK_EVENTS)[number];
 export const JSON_WEBHOOK_EVENT_LABELS: Record<JsonWebhookEvent, string> = {
-	seed_reward: 'Seeding reward grants'
+	seed_reward: 'Seeding reward grants',
+	kill_feed: 'Kill feed batches'
 };
 
 /** One event, as queueEvent takes it. */
@@ -73,3 +74,27 @@ export function seedRewardGranted(g: {
 		}
 	};
 }
+
+/**
+ * A batch of kills as the game reported them, forwarded to any webhook that ticks kill_feed.
+ */
+export function killFeedBatch(g: {
+	orgId: string;
+	server: { id: string; name: string };
+	batch: { instanceId: string; serverName: string; events: unknown[] };
+}): JsonEvent {
+	return {
+		kind: 'kill_feed',
+		event: 'kill_feed.batch',
+		key: g.batch.instanceId,
+		orgId: g.orgId,
+		serverId: g.server.id,
+		fields: {
+			server: g.server,
+			serverName: g.batch.serverName,
+			instanceId: g.batch.instanceId,
+			events: g.batch.events
+		}
+	};
+}
+
