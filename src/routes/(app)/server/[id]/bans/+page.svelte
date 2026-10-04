@@ -24,6 +24,7 @@
 		ts: Date | string;
 		actorName: string;
 		target: string;
+		reason: string;
 		message: string;
 		outcome: string;
 	}
@@ -259,13 +260,13 @@
 		player: { by: (k) => steam[k.target]?.name || k.target },
 		kickedAt: { by: (k) => String(k.ts), dir: 'desc' },
 		by: { by: (k) => k.actorName },
-		reason: { by: (k) => k.message },
+		reason: { by: (k) => k.reason },
 		outcome: { by: (k) => k.outcome }
 	});
 	let kickRows = $derived(
 		kickSort.sorted(
 			kickEntries.filter((k) =>
-				matches(kickSearch, k.target, steam[k.target]?.name, k.actorName, k.message)
+				matches(kickSearch, k.target, steam[k.target]?.name, k.actorName, k.reason, k.message)
 			)
 		)
 	);
@@ -414,6 +415,7 @@
 									<span class="text-mist-400">Permanent</span>
 								{/if}
 							</td>
+							<td class="text-[12.5px] text-mist-400">{#if k.message}{k.message}{:else}—{/if}</td>
 						</tr>
 					{:else}
 						<tr><td colspan="6" class="py-6 text-center text-mist-600">No bans.</td></tr>
@@ -479,6 +481,7 @@
 						<SortHeader sort={kickSort} key="by">By</SortHeader>
 						<SortHeader sort={kickSort} key="reason">Reason</SortHeader>
 						<SortHeader sort={kickSort} key="outcome">Outcome</SortHeader>
+						<th>Server response</th>
 					</tr>
 				</thead>
 				<tbody>
@@ -496,7 +499,7 @@
 								{k.ts ? fmtTime(String(k.ts)) : '—'}
 							</td>
 							<td>{k.actorName || '—'}</td>
-							<td>{#if k.message}{k.message}{:else}<span class="text-mist-600">—</span>{/if}</td>
+							<td>{#if k.reason}{k.reason}{:else}<span class="text-mist-600">—</span>{/if}</td>
 							<td>
 								{#if k.outcome === 'ok'}
 									<Badge tone="ok">ok</Badge>
@@ -508,9 +511,10 @@
 									<Badge>{k.outcome}</Badge>
 								{/if}
 							</td>
+							<td class="text-[12.5px] text-mist-400">{#if k.message}{k.message}{:else}—{/if}</td>
 						</tr>
 					{:else}
-						<tr><td colspan="5" class="py-6 text-center text-mist-600">No kicks recorded.</td></tr>
+						<tr><td colspan="6" class="py-6 text-center text-mist-600">No kicks recorded.</td></tr>
 					{/each}
 				</tbody>
 			</table>
