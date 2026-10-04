@@ -1,28 +1,31 @@
 import { error } from '@sveltejs/kit';
 import type { PageServerLoad } from './$types';
 import { getEnv } from '$lib/server/env';
-import { getOrg, listsRoleFor, requireServerCap } from '$lib/server/access';
+import { getOrg, listsRoleFor, requireServerCap, auditVisibility } from '$lib/server/access';
 import { normalizeError } from '$lib/server/http';
 import { orgListsView, serverListsState } from '$lib/server/lists';
+import { queryAudit } from '$lib/server/audit';
 
-/**
- * Checked here as well as in the server layout: a page's data can be asked for without its
- * layouts (SvelteKit's __data.json), so the layout's refusal protects nothing below it. Viewers
- * see the lists read-only.
- */
 export const load: PageServerLoad = async ({ locals, params }) => {
 	const env = getEnv();
 	try {
 		const { server, user, access } = await requireServerCap(env, locals, params.id, 'server.view');
-		const [listState, org, role] = await Promise.all([
+		const [listState, org, role, kicks] = await Promise.all([
 			serverListsState(env, server, user, access),
 			getOrg(env, server.orgId),
-			listsRoleFor(env, user, server.orgId)
+			listsRoleFor(env, user, server.orgId),
+			// Recent kicks on this server (rcon.kick audit rows)
+			queryAudit(env, {
+				serverId: server.id,
+				category: 'rcon',
+				action: 'rcon.kick',
+				visibleTo: await auditVisibility(env, user)
+			}).then((r) => r.entries).catch(() => [])
 		]);
 		return {
 			listState,
-			/** the org's lists with counts, for people who may open them */
-			orgLists: org && role ? await orgListsView(env, org, role) : null
+			orgLists: org && role ? await orgListsView(env, org, role) : null,
+			kicks
 		};
 	} catch (err) {
 		const known = normalizeError(err);
