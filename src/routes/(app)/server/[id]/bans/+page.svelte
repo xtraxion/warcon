@@ -34,7 +34,7 @@
 	let listsEdit = $derived(can(data.server.caps, 'lists.ban'));
 	let orgPath = $derived(`/orgs/${encodeURIComponent(data.server.orgId)}`);
 
-	let tab = $state<'bans' | 'kicks'>('bans');
+	let tab = $derived(data.tab === 'kicks' ? 'kicks' : 'bans');
 
 	let listState = $state<ServerListsState | null>(null);
 	$effect(() => {
@@ -271,23 +271,25 @@
 	);
 	$effect(() => {
 		kickEntries = data.kicks ?? [];
-		void lookupSteam(kickEntries.map((k) => k.target));
+	});
+	$effect(() => {
+		void lookupSteam([...rows.map((r) => r.steamId), ...kickEntries.map((k) => k.target)]);
 	});
 </script>
 
 <div class="mb-4 flex items-baseline gap-4 border-b border-mist-700 pb-2">
-	<button
+	<a
+		href="?tab=bans"
 		class="text-sm font-semibold {tab === 'bans' ? 'text-accent border-b-2 border-accent pb-1' : 'text-mist-400 hover:text-mist-200'}"
-		onclick={() => (tab = 'bans')}
 	>
 		Bans
-	</button>
-	<button
+	</a>
+	<a
+		href="?tab=kicks"
 		class="text-sm font-semibold {tab === 'kicks' ? 'text-accent border-b-2 border-accent pb-1' : 'text-mist-400 hover:text-mist-200'}"
-		onclick={() => (tab = 'kicks')}
 	>
 		Kicks ({kickEntries.length})
-	</button>
+	</a>
 </div>
 
 {#if tab === 'bans'}

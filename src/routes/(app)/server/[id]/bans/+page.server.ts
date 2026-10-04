@@ -6,7 +6,7 @@ import { normalizeError } from '$lib/server/http';
 import { orgListsView, serverListsState } from '$lib/server/lists';
 import { queryAudit } from '$lib/server/audit';
 
-export const load: PageServerLoad = async ({ locals, params }) => {
+export const load: PageServerLoad = async ({ locals, params, url }) => {
 	const env = getEnv();
 	try {
 		const { server, user, access } = await requireServerCap(env, locals, params.id, 'server.view');
@@ -23,6 +23,7 @@ export const load: PageServerLoad = async ({ locals, params }) => {
 			}).then((r) => r.entries).catch(() => [])
 		]);
 		return {
+			tab: url.searchParams.get('tab') === 'kicks' ? 'kicks' : 'bans',
 			listState,
 			orgLists: org && role ? await orgListsView(env, org, role) : null,
 			kicks
