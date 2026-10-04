@@ -1,13 +1,15 @@
 // Per-server kill feed relays: CRUD and fire-and-forget forwarding.
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import type { Env } from './env';
 import { newId } from './http';
+import { decryptSecret, encryptSecret } from './crypto';
 import { serverFeedRelays, type ServerFeedRelayRow } from './db/schema';
 
 export interface RelayView {
 	id: string;
 	label: string;
 	url: string;
+	token: string;
 	enabled: boolean;
 	createdAt: string;
 }
@@ -17,6 +19,7 @@ function shape(r: ServerFeedRelayRow): RelayView {
 		id: r.id,
 		label: r.label,
 		url: r.url,
+		token: r.tokenEnc ? decryptSecret(r.env as unknown as Env, r.tokenEnc) : '',
 		enabled: r.enabled,
 		createdAt: r.createdAt.toISOString()
 	};
@@ -28,42 +31,56 @@ export async function listRelays(env: Env, serverId: string): Promise<RelayView[
 		.from(serverFeedRelays)
 		.where(eq(serverFeedRelays.serverId, serverId))
 		.orderBy(serverFeedRelays.createdAt);
-	return rows.map(shape);
+	return rows.map((r) => shape(r as unknown as ServerFeedRelayRow & { env: Env }));
 }
 
 export async function createRelay(
 	env: Env,
 	serverId: string,
 	label: string,
-	url: string
+	url: string,
+	token: string
 ): Promise<RelayView> {
 	const id = newId();
 	const [row] = await env.db
 		.insert(serverFeedRelays)
-		.values({ id, serverId, label, url, enabled: true })
+		.values({
+			id,
+			serverId,
+			label,
+			url,
+			tokenEnc: token ? encryptSecret(env, token) : '',
+			enabled: true
+		})
 		.returning();
-	return shape(row);
+	return shape(row as unknown as ServerFeedRelayRow & { env: Env });
 }
 
 export async function updateRelay(
 	env: Env,
 	serverId: string,
 	id: string,
-	updates: { label?: string; url?: string; enabled?: boolean }
+	updates: { label?: string; url?: string; token?: string; enabled?: boolean }
 ): Promise<RelayView> {
+	const set: Record<string, unknown> = { updatedAt: new Date() };
+	if (updates.label !== undefined) set.label = updates.label;
+	if (updates.url !== undefined) set.url = updates.url;
+	if (updates.token !== undefined) set.tokenEnc = updates.token ? encryptSecret(env, updates.token) : '';
+	if (updates.enabled !== undefined) set.enabled = updates.enabled;
+
 	const [row] = await env.db
 		.update(serverFeedRelays)
-		.set({ ...updates, updatedAt: new Date() })
-		.where(eq(serverFeedRelays.id, id))
+		.set(set)
+		.where(and(eq(serverFeedRelays.id, id), eq(serverFeedRelays.serverId, serverId)))
 		.returning();
 	if (!row) throw new Error('Relay not found');
-	return shape(row);
+	return shape(row as unknown as ServerFeedRelayRow & { env: Env });
 }
 
 export async function deleteRelay(env: Env, serverId: string, id: string): Promise<void> {
 	await env.db
 		.delete(serverFeedRelays)
-		.where(eq(serverFeedRelays.id, id));
+		.where(and(eq(serverFeedRelays.id, id), eq(serverFeedRelays.serverId, serverId)));
 }
 
 /** Fire-and-forget POST to every enabled relay of this server. */
@@ -73,18 +90,23 @@ export async function forwardToRelays(
 	body: unknown
 ): Promise<void> {
 	const relays = await env.db
-		.select({ url: serverFeedRelays.url })
+		.select({ url: serverFeedRelays.url, tokenEnc: serverFeedRelays.tokenEnc })
 		.from(serverFeedRelays)
-		.where(eq(serverFeedRelays.serverId, serverId))
+		.where(and(eq(serverFeedRelays.serverId, serverId), eq(serverFeedRelays.enabled, true)))
 		.limit(50);
 	if (!relays.length) return;
 	const text = JSON.stringify(body);
 	await Promise.all(
-		relays.map(async ({ url }) => {
+		relays.map(async ({ url, tokenEnc }) => {
 			try {
+				const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+				if (tokenEnc) {
+					const token = decryptSecret(env, tokenEnc);
+					if (token) headers['Authorization'] = `Bearer ${token}`;
+				}
 				await fetch(url, {
 					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
+					headers,
 					body: text
 				});
 			} catch (e) {

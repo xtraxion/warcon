@@ -121,6 +121,74 @@
 		if (!failure)
 			toast('Kill feed configured. The game starts posting after its next restart.', 'ok');
 	}
+
+	// ---- Kill feed relays ----
+	interface Relay {
+		id: string;
+		label: string;
+		url: string;
+		token: string;
+		enabled: boolean;
+		createdAt: string;
+	}
+	let relays = $state<Relay[]>([]);
+	let relayBusy = $state(false);
+	let relayPath = $derived(`/api/servers/${encodeURIComponent(id)}/feed/relay`);
+	let newRelayLabel = $state('');
+	let newRelayUrl = $state('');
+	let newRelayToken = $state('');
+	async function loadRelays() {
+		try {
+			const r = await api<{ relays: Relay[] }>('GET', relayPath);
+			relays = r.relays ?? [];
+		} catch {
+			relays = [];
+		}
+	}
+	async function addRelay() {
+		if (!newRelayUrl || !URL.canParse(newRelayUrl)) {
+			toast('Enter a valid URL.', 'err');
+			return;
+		}
+		relayBusy = true;
+		try {
+			await api('POST', relayPath, { label: newRelayLabel, url: newRelayUrl, token: newRelayToken });
+			newRelayLabel = '';
+			newRelayUrl = '';
+			newRelayToken = '';
+			toast('Relay added.', 'ok');
+			await loadRelays();
+		} catch (err) {
+			toast(errorMessage(err), 'err');
+		} finally {
+			relayBusy = false;
+		}
+	}
+	async function toggleRelay(relay: Relay) {
+		relayBusy = true;
+		try {
+			await api('PATCH', `${relayPath}/${encodeURIComponent(relay.id)}`, { enabled: !relay.enabled });
+			relay.enabled = !relay.enabled;
+			toast(relay.enabled ? 'Relay enabled.' : 'Relay disabled.', 'ok');
+		} catch (err) {
+			toast(errorMessage(err), 'err');
+		} finally {
+			relayBusy = false;
+		}
+	}
+	async function removeRelay(relay: Relay) {
+		if (!await confirmDialog(`Remove relay "${relay.label || relay.url}"?`)) return;
+		relayBusy = true;
+		try {
+			await api('DELETE', `${relayPath}/${encodeURIComponent(relay.id)}`);
+			relays = relays.filter((r) => r.id !== relay.id);
+			toast('Relay removed.', 'ok');
+		} catch (err) {
+			toast(errorMessage(err), 'err');
+		} finally {
+			relayBusy = false;
+		}
+	}
 	async function copyFeed(value: string, what: string) {
 		try {
 			await navigator.clipboard.writeText(value);
@@ -135,6 +203,9 @@
 	};
 	$effect(() => {
 		void loadFeed();
+	});
+	$effect(() => {
+		void loadRelays();
 	});
 	let pinned = $derived(doc ? lockedKeys(doc.sections) : []);
 	let dirty = $derived(!!doc && text !== doc.text);
@@ -411,6 +482,53 @@
 			document; the game reads them at its next restart (its own 24-hour one, or a manual restart).{:else if feed && !data.server.manager}An
 			owner of the organisation holds the token.{/if}
 	</p>
+	{#if data.server.manager}
+		<div class="mt-4 border-t border-mist-700/30 pt-4">
+			<span class="label-sm mb-2 block">Forward to additional endpoints</span>
+			{#if relays.length}
+				<div class="space-y-2">
+					{#each relays as relay (relay.id)}
+						<div class="flex flex-wrap items-center gap-2">
+							<label class="inline-flex items-center gap-2 text-[13px]"
+								><input type="checkbox" checked={relay.enabled} disabled={relayBusy} onchange={() => toggleRelay(relay)} />
+								<span class="font-mono text-mist-400">{relay.url}</span>
+									{#if relay.label}<span class="text-mist-500">— {relay.label}</span>{/if}
+							</label>
+							<button class="btn btn-xs btn-danger" disabled={relayBusy} onclick={() => removeRelay(relay)}>Remove</button>
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<p class="text-[13px] text-mist-500">No relays yet.</p>
+			{/if}
+			<div class="mt-3 flex flex-wrap items-center gap-2">
+				<input
+						class="input text-[13px]"
+						placeholder="Label"
+						bind:value={newRelayLabel}
+						disabled={relayBusy}
+					/>
+				<input
+						class="input grow text-[13px]"
+						placeholder="URL (e.g. https://your-bridge.example/kills)"
+						bind:value={newRelayUrl}
+						disabled={relayBusy}
+					/>
+				<input
+						class="input text-[13px]"
+						placeholder="Bearer token (optional)"
+						bind:value={newRelayToken}
+						disabled={relayBusy}
+					/>
+				<button class="btn btn-sm" disabled={relayBusy} onclick={addRelay}>Add relay</button>
+			</div>
+			<p class="note mt-2">
+					Every incoming kill batch is fire-and-forget forwarded to enabled relays immediately. Use
+					<span class="chip">Org settings → JSON webhooks</span> if you need retries, signing, and
+					org-level routing instead.
+			</p>
+		</div>
+	{/if}
 </div>
 
 <div class="mt-4 panel">
