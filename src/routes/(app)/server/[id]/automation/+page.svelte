@@ -683,7 +683,8 @@
 					message: f.message,
 					onlyFirstVisit: f.onlyFirstVisit,
 					afterFaction: f.afterFaction,
-				delaySeconds: Number(f.delaySeconds) || 0
+				delaySeconds: Number(f.delaySeconds) || 0,
+					followUpMessage: f.followUpMessage?.trim() || undefined
 				};
 			case 'faction_change':
 				return { message: f.message };
@@ -884,7 +885,7 @@
 		const c = config;
 		switch (kind) {
 			case 'welcome':
-				return `"${c.message}"${c.afterFaction ? ' · after faction pick' : ' · on join'}${c.onlyFirstVisit ? ' · first visit only' : ''}${c.delaySeconds ? ' · +' + c.delaySeconds + 's follow-up' : ''}`;
+				return `"${c.message}"${c.afterFaction ? ' · after faction pick' : ' · on join'}${c.onlyFirstVisit ? ' · first visit only' : ''}${c.delaySeconds ? ' · +' + c.delaySeconds + 's follow-up' : ''}${c.followUpMessage ? ' · custom text' : ''}`;
 			case 'faction_change':
 				return `"${c.message}"`;
 			case 'broadcast':
@@ -1383,6 +1384,13 @@
 							/>
 							seconds (0 = off)
 						</label>
+						{#if f.delaySeconds > 0}
+							<label class="flex flex-col gap-1 mt-2">
+								<span class="text-[13px] text-foreground/70">Follow-up message (same placeholders as welcome)</span>
+								<input class="input" type="text" bind:value={f.followUpMessage} maxlength={MAX_CHAT} />
+							</label>
+							{@render placeholders('welcome', [f.followUpMessage])}
+						{/if}
 					</fieldset>
 					<p class="note">Sent as a whisper, so only that player sees it.</p>
 				{:else if f.kind === 'faction_change'}

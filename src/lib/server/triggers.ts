@@ -785,7 +785,8 @@ async function evalWelcome(
 	}
 	if (delay) {
 		for (const p of targets) {
-			const m2 = renderTemplate(cfg.message, vars(ctx, p, statsOf(stats, p.steamId)), MAX_CHAT);
+			const followText = cfg.followUpMessage?.trim() || cfg.message;
+			const m2 = renderTemplate(followText, vars(ctx, p, statsOf(stats, p.steamId)), MAX_CHAT);
 			out.intents.push({
 				trigger: row,
 				action: 'whisper',
