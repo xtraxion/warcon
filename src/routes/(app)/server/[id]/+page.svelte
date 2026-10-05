@@ -669,6 +669,7 @@
 								{#if k.killer}
 									<a
 										href="/server/{encodeURIComponent(id)}/players/{k.killer.steamId}"
+										data-sveltekit-preload-data="tap"
 										class="hover:text-accent hover:underline">{k.killer.name}</a
 									>
 									{#if k.killer.faction}<FactionChip
@@ -680,6 +681,7 @@
 							<td>
 								<a
 									href="/server/{encodeURIComponent(id)}/players/{k.victim.steamId}"
+									data-sveltekit-preload-data="tap"
 									class="hover:text-accent hover:underline">{k.victim.name}</a
 								>
 								{#if k.victim.faction}<FactionChip

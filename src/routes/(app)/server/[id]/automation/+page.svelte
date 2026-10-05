@@ -1858,7 +1858,9 @@
 							<p class="text-[12px] text-mist-600">
 								Nobody playing is moved mid-match. An arrival who would put their side past the gap
 								goes to the lighter side, a player who switches onto the bigger side is put back,
-								and a new match is evened up.
+								and a new match is evened up{f.clans
+									? ', keeping clans together where the numbers allow'
+									: ''}.
 							</p>
 						{/if}
 					</fieldset>
@@ -1878,8 +1880,7 @@
 							{#each FACTIONS as x (x)}<option value={x}></option>{/each}
 						</datalist>
 						<p class="text-[12px] text-mist-600">
-							Everyone on it is moved to the smaller other side (or their clan's, within the gap)
-							and respawns there.
+							Everyone on it is moved to the smaller other side (or their clan's, within the gap).
 						</p>
 					</fieldset>
 					<fieldset class="space-y-2">
@@ -1930,11 +1931,16 @@
 						move nobody</label
 					>
 					<p class="note">
-						Moves go out a few at a time as the player list refreshes; each kills the player so they
-						respawn on the new side. A player asked to move three times in ten minutes is left where
-						they are until the ten minutes pass.{f.balance
-							? ''
-							: ' Players are never moved between the open sides.'} One rule per server.
+						Moves go out a few at a time as the player list refreshes, without killing the player.
+						{#if f.balance}
+							A player who switches onto the bigger side is put back every time. A player asked to
+							move three times in ten minutes for any other reason, or put back three times without
+							it taking, is left where they are until the ten minutes pass.
+						{:else}
+							A player asked to move three times in ten minutes is left where they are until the ten
+							minutes pass. Players are never moved between the open sides.
+						{/if}
+						One rule per server.
 					</p>
 				{:else if f.kind === 'team_kill'}
 					<fieldset class="space-y-2">
@@ -2477,8 +2483,10 @@
 							<td>{d.triggerName}</td>
 							<td class="font-mono text-[12px]">{actionLabel(d.action)}</td>
 							<td class="font-mono text-[12px]"
-								>{#if isSteamId(d.target)}<a class="link" href="/server/{id}/players/{d.target}"
-										>{d.target}</a
+								>{#if isSteamId(d.target)}<a
+										class="link"
+										href="/server/{id}/players/{d.target}"
+										data-sveltekit-preload-data="tap">{d.target}</a
 									>{:else}{d.target}{/if}</td
 							>
 							<td
