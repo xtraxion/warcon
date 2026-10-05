@@ -14,12 +14,12 @@ export interface RelayView {
 	createdAt: string;
 }
 
-function shape(r: ServerFeedRelayRow): RelayView {
+function shape(env: Env, r: ServerFeedRelayRow): RelayView {
 	return {
 		id: r.id,
 		label: r.label,
 		url: r.url,
-		token: r.tokenEnc ? decryptSecret(r.env as unknown as Env, r.tokenEnc) : '',
+		token: r.tokenEnc ? decryptSecret(env, r.tokenEnc) : '',
 		enabled: r.enabled,
 		createdAt: r.createdAt.toISOString()
 	};
@@ -31,7 +31,7 @@ export async function listRelays(env: Env, serverId: string): Promise<RelayView[
 		.from(serverFeedRelays)
 		.where(eq(serverFeedRelays.serverId, serverId))
 		.orderBy(serverFeedRelays.createdAt);
-	return rows.map((r) => shape(r as unknown as ServerFeedRelayRow & { env: Env }));
+	return rows.map((r) => shape(env, r));
 }
 
 export async function createRelay(
@@ -53,7 +53,7 @@ export async function createRelay(
 			enabled: true
 		})
 		.returning();
-	return shape(row as unknown as ServerFeedRelayRow & { env: Env });
+	return shape(env, row);
 }
 
 export async function updateRelay(
@@ -74,7 +74,7 @@ export async function updateRelay(
 		.where(and(eq(serverFeedRelays.id, id), eq(serverFeedRelays.serverId, serverId)))
 		.returning();
 	if (!row) throw new Error('Relay not found');
-	return shape(row as unknown as ServerFeedRelayRow & { env: Env });
+	return shape(env, row);
 }
 
 export async function deleteRelay(env: Env, serverId: string, id: string): Promise<void> {

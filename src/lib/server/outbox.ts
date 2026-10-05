@@ -89,6 +89,7 @@ export async function enqueueIntents(
 				steamId: i.steamId,
 				okMessage: i.okMessage,
 				dedupeKey: i.dedupeKey,
+				notBefore: i.delaySeconds ? sql`now() + (${i.delaySeconds} || ' seconds')::interval` : undefined,
 				...(i.watchOnly
 					? { state: 'skipped', outcome: i.watchOnly.slice(0, 300), doneAt: new Date() }
 					: {})

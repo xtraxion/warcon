@@ -399,6 +399,7 @@
 		message: string;
 		onlyFirstVisit: boolean;
 		afterFaction: boolean;
+	delaySeconds: number;
 		messages: string;
 		everyMinutes: number;
 		minPlayers: number;
@@ -681,7 +682,8 @@
 				return {
 					message: f.message,
 					onlyFirstVisit: f.onlyFirstVisit,
-					afterFaction: f.afterFaction
+					afterFaction: f.afterFaction,
+				delaySeconds: Number(f.delaySeconds) || 0
 				};
 			case 'faction_change':
 				return { message: f.message };
@@ -882,7 +884,7 @@
 		const c = config;
 		switch (kind) {
 			case 'welcome':
-				return `"${c.message}"${c.afterFaction ? ' · after faction pick' : ' · on join'}${c.onlyFirstVisit ? ' · first visit only' : ''}`;
+				return `"${c.message}"${c.afterFaction ? ' · after faction pick' : ' · on join'}${c.onlyFirstVisit ? ' · first visit only' : ''}${c.delaySeconds ? ' · +' + c.delaySeconds + 's follow-up' : ''}`;
 			case 'faction_change':
 				return `"${c.message}"`;
 			case 'broadcast':
@@ -1366,6 +1368,21 @@
 							><input type="checkbox" bind:checked={f.onlyFirstVisit} /> Only on a player's first visit
 							to this server</label
 						>
+					</fieldset>
+					<fieldset class="space-y-1.5 text-[13px]">
+						<legend class="field-label">Follow-up</legend>
+						<label class="flex items-center gap-2">
+							Send a second whisper after
+							<input
+								class="input w-20 text-right"
+								type="number"
+								min="0"
+								max="300"
+								bind:value={f.delaySeconds}
+								aria-label="Delay in seconds"
+							/>
+							seconds (0 = off)
+						</label>
 					</fieldset>
 					<p class="note">Sent as a whisper, so only that player sees it.</p>
 				{:else if f.kind === 'faction_change'}
