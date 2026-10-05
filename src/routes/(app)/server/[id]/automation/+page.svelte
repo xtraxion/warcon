@@ -400,6 +400,7 @@
 		onlyFirstVisit: boolean;
 		afterFaction: boolean;
 	delaySeconds: number;
+	followUpMessage: string;
 		messages: string;
 		everyMinutes: number;
 		minPlayers: number;
@@ -565,6 +566,8 @@
 			),
 			onlyFirstVisit: b('onlyFirstVisit', false),
 			afterFaction: b('afterFaction', false),
+			delaySeconds: n('delaySeconds', 0),
+			followUpMessage: s('followUpMessage', ''),
 			messages: Array.isArray(c.messages)
 				? (c.messages as string[]).join('\n')
 				: 'Join our Discord for events and support.\nNo team-killing. Admins are watching.',
