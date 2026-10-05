@@ -75,6 +75,16 @@ const base = (ids: string[], from: Date, steamIds: string[] | null = null) => sq
 		   AND (left_at IS NULL OR left_at >= ${from})
 		   ${steamIds === null ? sql`` : sql`AND steam_id IN ${steamIds}`}
 		 GROUP BY steam_id),
+	banned AS (
+		SELECT DISTINCT steam_id FROM server_bans WHERE server_id IN ${ids}
+		UNION
+		SELECT DISTINCT e.steam_id FROM list_entries e
+		JOIN lists l ON l.id = e.list_id
+		LEFT JOIN server_lists sl ON sl.list_id = l.id AND sl.server_id IN ${ids}
+		WHERE l.kind = 'ban'
+		  AND e.removed_at IS NULL
+		  AND (e.expires_at IS NULL OR e.expires_at > now())
+		  AND (l.server_id IN ${ids} OR (l.server_id IS NULL AND sl.server_id IN ${ids}))),
 	${lines(ids, from, steamIds)},
 	mt AS (
 		SELECT steam_id, COUNT(*) AS matches,
@@ -95,7 +105,8 @@ const base = (ids: string[], from: Date, steamIds: string[] | null = null) => sq
 		       COALESCE(mt.kill_streak, 0) AS kill_streak, COALESCE(mt.death_streak, 0) AS death_streak,
 		       COALESCE(mt.matches, 0) AS matches, COALESCE(mt.wins, 0) AS wins,
 		       COALESCE(mt.losses, 0) AS losses, COALESCE(mt.draws, 0) AS draws
-		  FROM sess FULL JOIN mt USING (steam_id))`;
+		  FROM sess FULL JOIN mt USING (steam_id)
+		 WHERE steam_id NOT IN (SELECT steam_id FROM banned))`;
 
 /** All recorded games on these servers, batched for the connected-player risk badges. */
 export async function riskPerformanceFor(
