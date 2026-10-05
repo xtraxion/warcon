@@ -58,10 +58,6 @@ export interface WelcomeConfig {
 	/** wait for the player's first faction pick of the session: they choose one after joining, so a
 	 *  whisper on join can land while they are still in the menu */
 	afterFaction: boolean;
-	/** seconds to wait before sending the follow-up whisper after the first one lands */
-	delaySeconds?: number;
-	/** the follow-up message; uses the same template as the welcome message */
-	followUpMessage?: string;
 }
 /** Whispers a player when they switch from one faction to another (not their first pick). */
 export interface FactionChangeConfig {
@@ -238,7 +234,7 @@ export function validateConfig(kind: TriggerKind, raw: unknown): TriggerConfig {
 		case 'welcome': {
 			const message = str(c.message, MAX_CHAT);
 			if (!message) throw new ApiError(400, 'The welcome message is empty.');
-			return { message, onlyFirstVisit: !!c.onlyFirstVisit, afterFaction: !!c.afterFaction, delaySeconds: int(c.delaySeconds, 0, 0, 300), followUpMessage: str(c.followUpMessage, MAX_CHAT) };
+			return { message, onlyFirstVisit: !!c.onlyFirstVisit, afterFaction: !!c.afterFaction };
 		}
 		case 'faction_change': {
 			const message = str(c.message, MAX_CHAT);

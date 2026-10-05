@@ -399,8 +399,6 @@
 		message: string;
 		onlyFirstVisit: boolean;
 		afterFaction: boolean;
-	delaySeconds: number;
-	followUpMessage: string;
 		messages: string;
 		everyMinutes: number;
 		minPlayers: number;
@@ -566,8 +564,6 @@
 			),
 			onlyFirstVisit: b('onlyFirstVisit', false),
 			afterFaction: b('afterFaction', false),
-			delaySeconds: n('delaySeconds', 0),
-			followUpMessage: s('followUpMessage', ''),
 			messages: Array.isArray(c.messages)
 				? (c.messages as string[]).join('\n')
 				: 'Join our Discord for events and support.\nNo team-killing. Admins are watching.',
@@ -685,9 +681,7 @@
 				return {
 					message: f.message,
 					onlyFirstVisit: f.onlyFirstVisit,
-					afterFaction: f.afterFaction,
-				delaySeconds: Number(f.delaySeconds) || 0,
-					followUpMessage: f.followUpMessage?.trim() || undefined
+					afterFaction: f.afterFaction
 				};
 			case 'faction_change':
 				return { message: f.message };
@@ -888,7 +882,7 @@
 		const c = config;
 		switch (kind) {
 			case 'welcome':
-				return `"${c.message}"${c.afterFaction ? ' · after faction pick' : ' · on join'}${c.onlyFirstVisit ? ' · first visit only' : ''}${c.delaySeconds ? ' · +' + c.delaySeconds + 's follow-up' : ''}${c.followUpMessage ? ' · custom text' : ''}`;
+				return `"${c.message}"${c.afterFaction ? ' · after faction pick' : ' · on join'}${c.onlyFirstVisit ? ' · first visit only' : ''}`;
 			case 'faction_change':
 				return `"${c.message}"`;
 			case 'broadcast':
@@ -1372,28 +1366,6 @@
 							><input type="checkbox" bind:checked={f.onlyFirstVisit} /> Only on a player's first visit
 							to this server</label
 						>
-					</fieldset>
-					<fieldset class="space-y-1.5 text-[13px]">
-						<legend class="field-label">Follow-up</legend>
-						<label class="flex items-center gap-2">
-							Send a second whisper after
-							<input
-								class="input w-20 text-right"
-								type="number"
-								min="0"
-								max="300"
-								bind:value={f.delaySeconds}
-								aria-label="Delay in seconds"
-							/>
-							seconds (0 = off)
-						</label>
-						{#if f.delaySeconds > 0}
-							<label class="flex flex-col gap-1 mt-2">
-								<span class="text-[13px] text-foreground/70">Follow-up message (same placeholders as welcome)</span>
-								<input class="input" type="text" bind:value={f.followUpMessage} maxlength={MAX_CHAT} />
-							</label>
-							{@render placeholders('welcome', [f.followUpMessage])}
-						{/if}
 					</fieldset>
 					<p class="note">Sent as a whisper, so only that player sees it.</p>
 				{:else if f.kind === 'faction_change'}

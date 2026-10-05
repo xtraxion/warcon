@@ -521,8 +521,6 @@ export interface Intent {
 	dedupeKey: string;
 	/** a rule set to watch only: the row is kept as skipped, with this as its outcome, and never sent */
 	watchOnly?: string;
-	/** seconds to delay delivery after enqueueing */
-	delaySeconds?: number;
 }
 
 export interface TriggerUpdate {
@@ -761,7 +759,6 @@ async function evalWelcome(
 ) {
 	let n = 0;
 	let last = '';
-	const delay = cfg.delaySeconds ?? 0;
 	const targets = welcomeTargets(cfg, ctx);
 	const stats = await statsFor(
 		read,
@@ -777,28 +774,10 @@ async function evalWelcome(
 			okMessage: `Whispered ${p.name}.`,
 			detail: { name: p.name },
 			steamId: p.steamId,
-			dedupeKey: key(row, p.steamId, ctx.ts.getTime()),
-			delaySeconds: 0
+			dedupeKey: key(row, p.steamId, ctx.ts.getTime())
 		});
 		n++;
 		last = p.name;
-	}
-	if (delay) {
-		for (const p of targets) {
-			const followText = cfg.followUpMessage?.trim() || cfg.message;
-			const m2 = renderTemplate(followText, vars(ctx, p, statsOf(stats, p.steamId)), MAX_CHAT);
-			out.intents.push({
-				trigger: row,
-				action: 'whisper',
-				params: { steamId: p.steamId, message: m2 },
-				target: p.steamId,
-				okMessage: `Whispered ${p.name}.`,
-				detail: { name: p.name },
-				steamId: p.steamId,
-				dedupeKey: key(row, p.steamId, ctx.ts.getTime(), 'delayed'),
-				delaySeconds: delay
-			});
-		}
 	}
 	if (n)
 		out.updates.push({
