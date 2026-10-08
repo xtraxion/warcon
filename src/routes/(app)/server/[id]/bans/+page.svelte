@@ -20,6 +20,19 @@
 
 	let { data }: PageProps = $props();
 	let id = $derived(data.server.id);
+	let tab = $derived(data.tab || 'bans');
+
+	interface Kick {
+		id: bigint;
+		ts: string;
+		actorName: string;
+		target: string;
+		reason: string;
+		message: string;
+		outcome: string;
+	}
+	let kicks = $derived<Kick[]>(data.kicks || []);
+
 	let admin = $derived(can(data.server.caps, 'bans.manage'));
 	let listsEdit = $derived(can(data.server.caps, 'lists.ban'));
 	let orgPath = $derived(`/orgs/${encodeURIComponent(data.server.orgId)}`);
@@ -241,6 +254,24 @@
 	}
 </script>
 
+<div class="mb-4">
+	<div class="flex gap-1" role="tablist" aria-label="Bans and kicks">
+		<a
+			class={"tab " + (tab === 'bans' ? 'tab-active' : '')}
+			href={"/server/" + encodeURIComponent(id) + "/bans?tab=bans"}
+			role="tab"
+			aria-selected={tab === 'bans'}
+		>Bans</a>
+		<a
+			class={"tab " + (tab === 'kicks' ? 'tab-active' : '')}
+			role="tab"
+			href={"/server/" + encodeURIComponent(id) + "/bans?tab=kicks"}
+			aria-selected={tab === 'kicks'}
+		>Kicks</a>
+	</div>
+</div>
+
+{#if tab === 'bans'}
 <div class="mb-4 panel">
 	<div class="mb-2 flex flex-wrap items-center gap-2">
 		<span class="label-sm mb-0!">Organisation lists · {data.server.orgName}</span>
@@ -390,6 +421,46 @@
 		onclose={() => (editing = false)}
 		ondone={refreshBans}
 	/>
+{/if}
+{/if}
+
+{#if tab === 'kicks'}
+<div class="panel">
+	<div class="mb-3 flex flex-wrap items-center gap-2">
+		<span class="label-sm mb-0!">Kicks on this server</span>
+	</div>
+	<div class="table-wrap">
+		<table>
+			<thead>
+				<tr>
+					<th>Time (UTC)</th>
+					<th>Player</th>
+					<th>By</th>
+					<th>Reason</th>
+				</tr>
+			</thead>
+			<tbody>
+				{#each kicks as k}
+					<tr>
+						<td class="font-mono text-[12px] whitespace-nowrap text-mist-400">{utc(k.ts)}</td>
+						<td>
+							<SteamName profile={steam[k.target]} class="max-w-[240px] font-medium" />
+							<span class="block font-mono text-[12.5px] text-mist-400">{k.target}</span>
+						</td>
+						<td>{k.actorName}</td>
+						<td>{#if k.reason}{k.reason}{:else}<span class="text-mist-600">—</span>{/if}</td>
+					</tr>
+				{:else}
+					<tr><td colspan="4" class="py-6 text-center text-mist-600">No kicks.</td></tr>
+				{/each}
+			</tbody>
+		</table>
+	</div>
+	<p class="note">
+		Recent kicks are shown from the automation log. A kick that came from the game server itself
+		(not through Warcon) will not appear here.
+	</p>
+</div>
 {/if}
 
 {#if banning}
