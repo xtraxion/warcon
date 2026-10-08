@@ -8,6 +8,7 @@ import { validateKillRate, type KillRateConfig } from './kill-rate';
 import { validateKillDistance, type KillDistanceConfig } from './kill-distance';
 import { validateTwoTeams, type TwoTeamsConfig } from './two-teams';
 import { validateAfkProtection, type AfkProtectionConfig } from './afk-protection';
+import { validateNameChange, type NameChangeConfig } from './name-change';
 import { causeTags } from './cause-tags';
 import { RESTART_AFTER_HOURS, restartWindow } from '$lib/uptime';
 import { MAX_CHAT } from '$lib/chat';
@@ -32,7 +33,8 @@ export const TRIGGER_KINDS: TriggerKind[] = [
 	'kill_rate',
 	'two_teams',
 	'kill_distance',
-	'afk_protection'
+	'afk_protection',
+	'name_change'
 ];
 export const TRIGGER_LABELS: Record<TriggerKind, string> = {
 	welcome: 'Welcome whisper',
@@ -49,7 +51,8 @@ export const TRIGGER_LABELS: Record<TriggerKind, string> = {
 	kill_rate: 'Kill rate watch',
 	two_teams: 'Team balance',
 	kill_distance: 'Kill distance watch',
-	afk_protection: 'AFK protection'
+	afk_protection: 'AFK protection',
+	name_change: 'Name change watch'
 };
 
 export interface WelcomeConfig {
@@ -210,7 +213,8 @@ export type TriggerConfig =
 	| KillRateConfig
 	| TwoTeamsConfig
 	| KillDistanceConfig
-	| AfkProtectionConfig;
+	| AfkProtectionConfig
+	| NameChangeConfig;
 
 /** A kick reason: not chat, so not held to the game's chat cap. */
 export const MAX_REASON = 200;
@@ -401,6 +405,8 @@ export function validateConfig(kind: TriggerKind, raw: unknown): TriggerConfig {
 			return validateKillDistance(c);
 		case 'afk_protection':
 			return validateAfkProtection(c);
+		case 'name_change':
+			return validateNameChange(c);
 	}
 }
 
@@ -849,10 +855,20 @@ export interface RiskKickSignals {
 }
 
 /** Why a joiner would be kicked under this config, or null when they pass. */
+/**
+ * A kick's verdict goes into this server's trail, the rule's last result and Discord cards, whose
+ * readers need not be able to open the server that banned the player: it says that one did, never
+ * which or why. The player page shows those to whoever may open that server.
+ */
+const ELSEWHERE = 'banned on another server of this organisation';
+const KICK_TEXT: Record<string, string> = {
+	banned_elsewhere: 'Banned on another server of this organisation',
+	resembles: 'Name resembles a banned player'
+};
+
 export function riskKickVerdict(cfg: RiskKickConfig, s: RiskKickSignals): string | null {
 	if (s.reserved && cfg.spareReserved) return null;
-	if (cfg.bannedElsewhere && s.bannedOn.length)
-		return `banned on ${s.bannedOn[0].serverName}${s.bannedOn[0].reason ? ` (${s.bannedOn[0].reason})` : ''}`;
+	if (cfg.bannedElsewhere && s.bannedOn.length) return ELSEWHERE;
 	if (cfg.watchlist && s.watched)
 		return `on the watchlist${s.watched.reason ? ` (${s.watched.reason})` : ''}`;
 	if (s.steamEnabled && s.profile && !s.profile.error) {
@@ -887,10 +903,14 @@ export function riskKickVerdict(cfg: RiskKickConfig, s: RiskKickSignals): string
 			now: s.now
 		});
 		if (risk.score >= minScore) {
-			const why = [...risk.reasons]
-				.sort((a, b) => b.weight - a.weight)
+			const why = [
+				...new Set(
+					[...risk.reasons]
+						.sort((a, b) => b.weight - a.weight)
+						.map((r) => KICK_TEXT[r.code] ?? r.text)
+				)
+			]
 				.slice(0, 3)
-				.map((r) => r.text)
 				.join('; ');
 			const what =
 				risk.level === 'low' ? `risk ${risk.score}` : `${risk.level} risk (${risk.score})`;

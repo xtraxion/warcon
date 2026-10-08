@@ -18,24 +18,11 @@
 	import type { Ban, ListSyncServer, ListSyncSummary, ServerListsState } from '$lib/types';
 	import type { PageProps } from './$types';
 
-	/** Audit row shape as sent to the page; kept minimal. */
-	interface KickEntry {
-		id: number;
-		ts: Date | string;
-		actorName: string;
-		target: string;
-		reason: string;
-		message: string;
-		outcome: string;
-	}
-
 	let { data }: PageProps = $props();
 	let id = $derived(data.server.id);
 	let admin = $derived(can(data.server.caps, 'bans.manage'));
 	let listsEdit = $derived(can(data.server.caps, 'lists.ban'));
 	let orgPath = $derived(`/orgs/${encodeURIComponent(data.server.orgId)}`);
-
-	let tab = $derived(data.tab === 'kicks' ? 'kicks' : 'bans');
 
 	let listState = $state<ServerListsState | null>(null);
 	$effect(() => {
@@ -252,275 +239,168 @@
 			}
 		);
 	}
-
-	// ---- Kicks tab ----
-	let kickSearch = $state('');
-	let kickEntries = $state<KickEntry[]>(data.kicks ?? []);
-	const kickSort = new TableSort<KickEntry>({
-		player: { by: (k) => steam[k.target]?.name || k.target },
-		kickedAt: { by: (k) => String(k.ts), dir: 'desc' },
-		by: { by: (k) => k.actorName },
-		reason: { by: (k) => k.reason },
-		outcome: { by: (k) => k.outcome }
-	});
-	let kickRows = $derived(
-		kickSort.sorted(
-			kickEntries.filter((k) =>
-				matches(kickSearch, k.target, steam[k.target]?.name, k.actorName, k.reason, k.message)
-			)
-		)
-	);
-	$effect(() => {
-		kickEntries = data.kicks ?? [];
-	});
-	$effect(() => {
-		void lookupSteam([...rows.map((r) => r.steamId), ...kickEntries.map((k) => k.target)]);
-	});
 </script>
 
-<div class="mb-4 flex items-baseline gap-4 border-b border-mist-700 pb-2">
-	<a
-		href="?tab=bans"
-		class="text-sm font-semibold {tab === 'bans' ? 'text-accent border-b-2 border-accent pb-1' : 'text-mist-400 hover:text-mist-200'}"
-	>
-		Bans
-	</a>
-	<a
-		href="?tab=kicks"
-		class="text-sm font-semibold {tab === 'kicks' ? 'text-accent border-b-2 border-accent pb-1' : 'text-mist-400 hover:text-mist-200'}"
-	>
-		Kicks ({kickEntries.length})
-	</a>
+<div class="mb-4 panel">
+	<div class="mb-2 flex flex-wrap items-center gap-2">
+		<span class="label-sm mb-0!">Organisation lists · {data.server.orgName}</span>
+		<span class="ml-auto inline-flex flex-wrap gap-1.5">
+			{#if listState?.canEditOrgBans}
+				<a class="btn btn-sm" href="{orgPath}/bans">Ban list</a>
+			{/if}
+			{#if listsEdit}
+				<button class="btn btn-sm" disabled={busy} onclick={syncNow}>Sync now</button>
+			{/if}
+		</span>
+	</div>
+	<div class="flex flex-wrap gap-x-5 gap-y-1 text-[13px]">
+		{#if orgBanCount !== null}
+			<span
+				><b>{orgBanCount}</b> org ban{orgBanCount === 1 ? '' : 's'}, <b>{managedBans}</b> applied here</span
+			>
+		{:else}
+			<span class="text-mist-400"
+				>Managed by the organisation's owners and server admins; entries they push here are marked
+				<Badge tone="ok">org</Badge> below.</span
+			>
+		{/if}
+		{#if pendingCount}<Badge tone="warn">{pendingCount} pending or failed</Badge>{/if}
+	</div>
+	<div class="mt-1 text-[12.5px] text-mist-400">
+		{#if listState?.sync?.syncedAt}
+			Last synced {fmtTime(listState.sync.syncedAt)}.
+		{:else}
+			Not synced yet.
+		{/if}
+		{#if listState?.sync?.lastError}<span class="text-danger">
+				{listState.sync.lastError}</span
+			>{/if}
+	</div>
 </div>
 
-{#if tab === 'bans'}
-	<div class="mb-4 panel">
-		<div class="mb-2 flex flex-wrap items-center gap-2">
-			<span class="label-sm mb-0!">Organisation lists · {data.server.orgName}</span>
-			<span class="ml-auto inline-flex flex-wrap gap-1.5">
-				{#if listState?.canEditOrgBans}
-					<a class="btn btn-sm" href="{orgPath}/bans">Ban list</a>
-				{/if}
-				{#if listsEdit}
-					<button class="btn btn-sm" disabled={busy} onclick={syncNow}>Sync now</button>
-				{/if}
-			</span>
-		</div>
-		<div class="flex flex-wrap gap-x-5 gap-y-1 text-[13px]">
-			{#if orgBanCount !== null}
-				<span
-					><b>{orgBanCount}</b> org ban{orgBanCount === 1 ? '' : 's'}, <b>{managedBans}</b> applied here</span
-				>
-			{:else}
-				<span class="text-mist-400"
-					>Managed by the organisation's owners and server admins; entries they push here are marked
-					<Badge tone="ok">org</Badge> below.</span
-				>
-			{/if}
-			{#if pendingCount}<Badge tone="warn">{pendingCount} pending or failed</Badge>{/if}
-		</div>
-		<div class="mt-1 text-[12.5px] text-mist-400">
-			{#if listState?.sync?.syncedAt}
-				Last synced {fmtTime(listState.sync.syncedAt)}.
-			{:else}
-				Not synced yet.
-			{/if}
-			{#if listState?.sync?.lastError}<span class="text-danger">
-					{listState.sync.lastError}</span
-				>{/if}
-		</div>
+<div class="panel">
+	<div class="mb-3 flex flex-wrap items-center gap-2">
+		<span class="label-sm mb-0!">Bans on this server</span>
+		<button class="ml-auto btn btn-sm btn-danger" disabled={!admin} onclick={() => (banning = true)}
+			>Ban a SteamID</button
+		>
 	</div>
-
-	<div class="panel">
-		<div class="mb-3 flex flex-wrap items-center gap-2">
-			<span class="label-sm mb-0!">Bans on this server</span>
-			<button class="ml-auto btn btn-sm btn-danger" disabled={!admin} onclick={() => (banning = true)}
-				>Ban a SteamID</button
+	<div class="mb-3 flex flex-wrap items-center gap-2">
+		<div class="join w-full sm:w-auto sm:min-w-[320px]">
+			<input
+				class="input"
+				type="search"
+				placeholder="Filter bans by SteamID, admin, reason…"
+				bind:value={banSearch}
+			/>
+			<button class="btn" onclick={refreshBans}>Refresh</button>
+		</div>
+		<span class="inline-flex gap-1.5 sm:ml-auto">
+			{#if selectedBan && listState?.canEditOrgBans && !banSource(selectedBan)?.managed}
+				<button class="btn" disabled={busy} onclick={promoteSelected}
+					>{listState.orgOwner ? 'Promote to org list' : 'Add to org list'}</button
+				>
+			{/if}
+			<button class="btn" disabled={busy || !canEdit} onclick={() => (editing = true)}>Edit</button>
+			<button
+				class="btn btn-danger"
+				disabled={busy || !admin || !selectedBan}
+				onclick={unbanSelected}>Unban selected</button
 			>
-		</div>
-		<div class="mb-3 flex flex-wrap items-center gap-2">
-			<div class="join w-full sm:w-auto sm:min-w-[320px]">
-				<input
-					class="input"
-					type="search"
-					placeholder="Filter bans by SteamID, admin, reason…"
-					bind:value={banSearch}
-				/>
-				<button class="btn" onclick={refreshBans}>Refresh</button>
-			</div>
-			<span class="inline-flex gap-1.5 sm:ml-auto">
-				{#if selectedBan && listState?.canEditOrgBans && !banSource(selectedBan)?.managed}
-					<button class="btn" disabled={busy} onclick={promoteSelected}
-						>{listState.orgOwner ? 'Promote to org list' : 'Add to org list'}</button
+		</span>
+	</div>
+	<div class="table-wrap">
+		<table>
+			<thead>
+				<tr>
+					<SortHeader {sort} key="player">Player</SortHeader>
+					<SortHeader {sort} key="source">Source</SortHeader>
+					<SortHeader {sort} key="bannedAt">Banned at (UTC)</SortHeader>
+					<SortHeader {sort} key="by">By</SortHeader>
+					<SortHeader {sort} key="reason">Reason</SortHeader>
+					<SortHeader {sort} key="expires">Expires</SortHeader>
+				</tr>
+			</thead>
+			<tbody>
+				{#each banRows as b (b.steamId)}
+					<tr
+						class="clickable {selectedBan === b.steamId ? 'selected' : ''}"
+						onclick={() => (selectedBan = selectedBan === b.steamId ? null : b.steamId)}
 					>
-				{/if}
-				<button class="btn" disabled={busy || !canEdit} onclick={() => (editing = true)}>Edit</button>
-				<button
-					class="btn btn-danger"
-					disabled={busy || !admin || !selectedBan}
-					onclick={unbanSelected}>Unban selected</button
-				>
-			</span>
-		</div>
-		<div class="table-wrap">
-			<table>
-				<thead>
-					<tr>
-						<SortHeader {sort} key="player">Player</SortHeader>
-						<SortHeader {sort} key="source">Source</SortHeader>
-						<SortHeader {sort} key="bannedAt">Banned at (UTC)</SortHeader>
-						<SortHeader {sort} key="by">By</SortHeader>
-						<SortHeader {sort} key="reason">Reason</SortHeader>
-						<SortHeader {sort} key="expires">Expires</SortHeader>
-					</tr>
-				</thead>
-				<tbody>
-					{#each banRows as b (b.steamId)}
-						<tr
-							class="clickable {selectedBan === b.steamId ? 'selected' : ''}"
-							onclick={() => (selectedBan = selectedBan === b.steamId ? null : b.steamId)}
+						<td>
+							<SteamName profile={steam[b.steamId]} class="max-w-[240px] font-medium" />
+							<a
+								href="/server/{encodeURIComponent(id)}/players/{b.steamId}"
+								data-sveltekit-preload-data="tap"
+								class="block font-mono text-[12.5px] hover:text-accent hover:underline"
+								title="Open dossier"
+								onclick={(e) => e.stopPropagation()}>{b.steamId}</a
+							>
+						</td>
+						<td>
+							{#if b.source === 'local'}
+								<Badge>local</Badge>
+							{:else}
+								<Badge tone="ok">{b.source}</Badge>
+							{/if}
+						</td>
+						<td class="font-mono text-[12px] whitespace-nowrap text-mist-400"
+							>{b.bannedAt || '—'}</td
 						>
-							<td>
-								<SteamName profile={steam[b.steamId]} class="max-w-[240px] font-medium" />
-								<a
-									href="/server/{encodeURIComponent(id)}/players/{b.steamId}"
-									class="block font-mono text-[12.5px] hover:text-accent hover:underline"
-									title="Open dossier"
-									onclick={(e) => e.stopPropagation()}>{b.steamId}</a
-								>
-							</td>
-							<td>
-								{#if b.source === 'local'}
-									<Badge>local</Badge>
-								{:else}
-									<Badge tone="ok">{b.source}</Badge>
-								{/if}
-							</td>
-							<td class="font-mono text-[12px] whitespace-nowrap text-mist-400"
-								>{b.bannedAt || '—'}</td
-							>
-							<td>{b.by}</td>
-							<td
-								>{#if b.reason}{b.reason}{:else}<span class="text-mist-600">—</span>{/if}</td
-							>
-							<td class="whitespace-nowrap">
-								{#if b.source === 'local'}
-									<span class="text-mist-600">—</span>
-								{:else if b.expiresAt}
-									<div class="text-accent">
-										in {fmtSpan(new Date(b.expiresAt).getTime() - Date.now())}
-									</div>
-									<div class="font-mono text-[12px] text-mist-400">{fmtTime(b.expiresAt)}</div>
-								{:else}
-									<span class="text-mist-400">Permanent</span>
-								{/if}
-							</td>
-						</tr>
-					{:else}
-						<tr><td colspan="5" class="py-6 text-center text-mist-600">No bans.</td></tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-		<p class="note">
-			<Badge tone="ok">org</Badge> bans come from the organisation's ban list and
-			<Badge tone="ok">here</Badge> bans are on this server's own list. The panel enforces both itself:
-			a banned player is removed the moment they are seen on the server, and nothing is written to the game's
-			files, so an unban or an expiry takes effect at once. <Badge>local</Badge> bans are held by the game
-			in its own list; the panel leaves them alone, and some hosts only forget one when it is taken out
-			of the server's settings file.
-		</p>
-	</div>
-
-	{#if editing && selectedRow}
-		<EditBanDialog
-			path={entryPath}
-			who={steam[selectedRow.steamId]?.name || selectedRow.steamId}
-			placed={`Banned ${selectedRow.source === 'here' ? `on ${data.server.name}` : `across ${data.server.orgName}`}${selectedRow.by ? ` by ${selectedRow.by}` : ''}${selectedRow.bannedAt ? ` on ${selectedRow.bannedAt} UTC` : ''}.`}
-			reason={selectedRow.reason}
-			expiresAt={selectedRow.expiresAt}
-			onclose={() => (editing = false)}
-			ondone={refreshBans}
-		/>
-	{/if}
-
-	{#if banning}
-		<BanDialog
-			orgId={data.server.orgId}
-			orgName={data.server.orgName}
-			server={{ id, name: data.server.name }}
-			canOrg={listState?.canEditOrgBans ?? false}
-			banMessage={listState?.banMessage}
-			onclose={() => (banning = false)}
-			ondone={refreshAll}
-		/>
-	{/if}
-{:else}
-	<!-- Kicks tab -->
-	<div class="panel">
-		<div class="mb-3 flex flex-wrap items-center gap-2">
-			<span class="label-sm mb-0!">Kicks on this server</span>
-		</div>
-		<div class="mb-3 flex flex-wrap items-center gap-2">
-			<div class="join w-full sm:w-auto sm:min-w-[320px]">
-				<input
-					class="input"
-					type="search"
-					placeholder="Filter kicks by SteamID, admin, reason…"
-					bind:value={kickSearch}
-				/>
-			</div>
-		</div>
-		<div class="table-wrap">
-			<table>
-				<thead>
-					<tr>
-						<SortHeader sort={kickSort} key="player">Player</SortHeader>
-						<SortHeader sort={kickSort} key="kickedAt">Kicked at (UTC)</SortHeader>
-						<SortHeader sort={kickSort} key="by">By</SortHeader>
-						<SortHeader sort={kickSort} key="reason">Reason</SortHeader>
-						<SortHeader sort={kickSort} key="outcome">Outcome</SortHeader>
+						<td>{b.by}</td>
+						<td
+							>{#if b.reason}{b.reason}{:else}<span class="text-mist-600">—</span>{/if}</td
+						>
+						<td class="whitespace-nowrap">
+							{#if b.source === 'local'}
+								<span class="text-mist-600">—</span>
+							{:else if b.expiresAt}
+								<div class="text-accent">
+									in {fmtSpan(new Date(b.expiresAt).getTime() - Date.now())}
+								</div>
+								<div class="font-mono text-[12px] text-mist-400">{fmtTime(b.expiresAt)}</div>
+							{:else}
+								<span class="text-mist-400">Permanent</span>
+							{/if}
+						</td>
 					</tr>
-				</thead>
-				<tbody>
-					{#each kickRows as k (k.id)}
-						<tr>
-							<td>
-								<SteamName profile={steam[k.target]} class="max-w-[240px] font-medium" />
-								<a
-									href="/server/{encodeURIComponent(id)}/players/{k.target}"
-									class="block font-mono text-[12.5px] hover:text-accent hover:underline"
-									title="Open dossier"
-								>{k.target}</a>
-							</td>
-							<td class="font-mono text-[12px] whitespace-nowrap text-mist-400">
-								{k.ts ? fmtTime(String(k.ts)) : '—'}
-							</td>
-							<td>{k.actorName || '—'}</td>
-							<td>{#if k.reason}{k.reason}{:else}<span class="text-mist-600">—</span>{/if}</td>
-							<td>
-								{#if k.outcome === 'ok'}
-									<Badge tone="ok">ok</Badge>
-								{:else if k.outcome === 'error'}
-									<Badge tone="err">error</Badge>
-								{:else if k.outcome === 'denied'}
-									<Badge tone="warn">denied</Badge>
-								{:else}
-									<Badge>{k.outcome}</Badge>
-								{/if}
-							</td>
-						</tr>
-					{:else}
-						<tr><td colspan="5" class="py-6 text-center text-mist-600">No kicks recorded.</td></tr>
-					{/each}
-				</tbody>
-			</table>
-		</div>
-		<p class="note">
-			Manual kicks performed from the player list are logged here.
-			Auto-kicks from rules (risk kick, ping kick, team-kill kick) appear in the
-			<a class="text-accent hover:underline" href="/server/{encodeURIComponent(id)}/automation">Automation</a>
-			log.
-		</p>
+				{:else}
+					<tr><td colspan="6" class="py-6 text-center text-mist-600">No bans.</td></tr>
+				{/each}
+			</tbody>
+		</table>
 	</div>
+	<p class="note">
+		<Badge tone="ok">org</Badge> bans come from the organisation's ban list and
+		<Badge tone="ok">here</Badge> bans are on this server's own list. The panel enforces both itself:
+		a banned player is removed the moment they are seen on the server, and nothing is written to the game's
+		files, so an unban or an expiry takes effect at once. <Badge>local</Badge> bans are held by the game
+		in its own list; the panel leaves them alone, and some hosts only forget one when it is taken out
+		of the server's settings file.
+	</p>
+</div>
+
+{#if editing && selectedRow}
+	<EditBanDialog
+		path={entryPath}
+		who={steam[selectedRow.steamId]?.name || selectedRow.steamId}
+		placed={`Banned ${selectedRow.source === 'here' ? `on ${data.server.name}` : `across ${data.server.orgName}`}${selectedRow.by ? ` by ${selectedRow.by}` : ''}${selectedRow.bannedAt ? ` on ${selectedRow.bannedAt} UTC` : ''}.`}
+		reason={selectedRow.reason}
+		expiresAt={selectedRow.expiresAt}
+		onclose={() => (editing = false)}
+		ondone={refreshBans}
+	/>
+{/if}
+
+{#if banning}
+	<BanDialog
+		orgId={data.server.orgId}
+		orgName={data.server.orgName}
+		server={{ id, name: data.server.name }}
+		canOrg={listState?.canEditOrgBans ?? false}
+		banMessage={listState?.banMessage}
+		reasons={listState?.banReasons ?? []}
+		onclose={() => (banning = false)}
+		ondone={refreshAll}
+	/>
 {/if}

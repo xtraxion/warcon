@@ -17,6 +17,7 @@
 	import SortHeader from '$lib/components/SortHeader.svelte';
 	import { TableSort, matches } from '$lib/table.svelte';
 	import { watchLive } from '$lib/live';
+	import { RULE_GROUPS, RULE_KINDS } from '$lib/rule-kinds';
 	import type {
 		DryRunResult,
 		MapSelection,
@@ -113,103 +114,11 @@
 					? 'warn'
 					: 'err';
 
-	// The kinds, grouped by what they act on for the Add menu. `needs` is what a kind must have
-	// before it can run here, shown in the menu and at the top of its editor; '' when it can.
-	type Group = 'Messages' | 'Players' | 'Server';
-	const KINDS: { kind: TriggerKind; group: Group; label: string; blurb: string }[] = [
-		{
-			kind: 'welcome',
-			group: 'Messages',
-			label: 'Welcome whisper',
-			blurb: 'Whisper players as they join, or once they pick a faction.'
-		},
-		{
-			kind: 'faction_change',
-			group: 'Messages',
-			label: 'Faction change whisper',
-			blurb: 'Whisper players who switch sides.'
-		},
-		{
-			kind: 'broadcast',
-			group: 'Messages',
-			label: 'Scheduled broadcast',
-			blurb: 'Rotate through messages every few minutes while people are on.'
-		},
-		{
-			kind: 'restart_notice',
-			group: 'Messages',
-			label: 'Restart notice',
-			blurb: 'Warn players before the 24-hour restart and tell them when it lands.'
-		},
-		{
-			kind: 'match_broadcast',
-			group: 'Messages',
-			label: 'Match broadcast',
-			blurb: 'Announce who won when a match ends, and the map as the next one starts.'
-		},
-		{
-			kind: 'risk_kick',
-			group: 'Players',
-			label: 'Kick on connect risk',
-			blurb: 'Kick joiners the panel already distrusts, before they get a slot.'
-		},
-		{
-			kind: 'name_filter',
-			group: 'Players',
-			label: 'Name filter',
-			blurb: 'Kick or flag joiners whose name uses characters or words this server does not allow.'
-		},
-		{
-			kind: 'ping_kick',
-			group: 'Players',
-			label: 'High ping kick',
-			blurb: 'Kick players whose ping stays too high for a configured time.'
-		},
-		{
-			kind: 'team_kill',
-			group: 'Players',
-			label: 'Team kill limit',
-			blurb: 'Whisper a player about team kills and kick them past a limit.'
-		},
-		{
-			kind: 'kill_rate',
-			group: 'Players',
-			label: 'Kill rate watch',
-			blurb: 'Flag players who get kills too fast, or too many headshots, for staff to check.'
-		},
-		{
-			kind: 'kill_distance',
-			group: 'Players',
-			label: 'Kill distance watch',
-			blurb:
-				'Flag, warn, kill, kick or ban players for kills with chosen weapons or vehicles, at any distance or from too far.'
-		},
-		{
-			kind: 'two_teams',
-			group: 'Players',
-			label: 'Team balance',
-			blurb: 'Keep the sides even, and close a faction to play two teams.'
-		},
-		{
-			kind: 'seed_reward',
-			group: 'Players',
-			label: 'Seeding reward',
-			blurb: 'Give players who stay while the server is quiet a reserved slot.'
-		},
-		{
-			kind: 'afk_protection',
-			group: 'Players',
-			label: 'AFK protection',
-			blurb: 'Kill everyone every few minutes while the server seeds, so the idle kick spares them.'
-		},
-		{
-			kind: 'empty_reset',
-			group: 'Server',
-			label: 'Empty-server map reset',
-			blurb: 'Put an empty server back on a chosen map after a while.'
-		}
-	];
-	const GROUPS: Group[] = ['Messages', 'Players', 'Server'];
+	// The kinds, grouped by what they act on for the Add menu ($lib/rule-kinds). `needs` is what a
+	// kind must have before it can run here, shown in the menu and at the top of its editor; '' when
+	// it can.
+	const KINDS = RULE_KINDS;
+	const GROUPS = RULE_GROUPS;
 	/** The outbox action as the table shows it: a flag sends nothing to the game, so it reads as one. */
 	const actionLabel = (action: string) =>
 		action === 'name_flag' || action === 'kill_rate_flag' || action === 'kill_distance_flag'
@@ -220,7 +129,9 @@
 					? 'kill everyone'
 					: action === 'rule_kill'
 						? 'kill'
-						: action;
+						: action === 'kill_distance_skip'
+							? 'not counted'
+							: action;
 	const label = (kind: TriggerKind) => KINDS.find((k) => k.kind === kind)?.label ?? kind;
 	const blurb = (kind: TriggerKind) => KINDS.find((k) => k.kind === kind)?.blurb ?? '';
 	/** Why a kind cannot run on this server yet, or '' when it can. */
@@ -229,6 +140,7 @@
 			case 'team_kill':
 			case 'kill_rate':
 			case 'kill_distance':
+			case 'name_change':
 				return data.feed
 					? ''
 					: 'Needs the kill feed, which is off on this server. Turn it on under Config.';
@@ -321,7 +233,10 @@
 		list.some((c) => c.toLowerCase() === cause.toLowerCase());
 	/** A kind that lacks what it needs stays in the menu, greyed, with the reason in a few words. */
 	const short = (kind: TriggerKind): string =>
-		kind === 'team_kill' || kind === 'kill_rate' || kind === 'kill_distance'
+		kind === 'team_kill' ||
+		kind === 'kill_rate' ||
+		kind === 'kill_distance' ||
+		kind === 'name_change'
 			? 'needs the kill feed'
 			: kind === 'risk_kick'
 				? 'needs a Steam key'
@@ -444,6 +359,8 @@
 		blocked: string;
 		allowed: string;
 		nameAction: 'kick' | 'alert';
+		takenOnly: boolean;
+		changes: number;
 		windowMinutes: number;
 		maxKills: number;
 		headshotPct: number;
@@ -591,11 +508,13 @@
 				'reason',
 				kind === 'name_filter'
 					? 'Your name is not allowed on this server: {why}.'
-					: kind === 'ping_kick'
-						? 'Ping too high for too long.'
-						: kind === 'kill_distance'
-							? distanceText(distanceAction)
-							: 'Your account does not meet this server’s requirements.'
+					: kind === 'name_change'
+						? 'Changing your name mid-game is not allowed here.'
+						: kind === 'ping_kick'
+							? 'Ping too high for too long.'
+							: kind === 'kill_distance'
+								? distanceText(distanceAction)
+								: 'Your account does not meet this server’s requirements.'
 			),
 			leadMinutes: n('leadMinutes', 30),
 			leadMessage: s(
@@ -627,8 +546,16 @@
 			builtinWords: b('builtinWords', !t),
 			blocked: Array.isArray(c.blocked) ? (c.blocked as string[]).join('\n') : '',
 			allowed: Array.isArray(c.allowed) ? (c.allowed as string[]).join('\n') : '',
-			nameAction: c.action === 'alert' ? 'alert' : 'kick',
-			windowMinutes: n('windowMinutes', 5),
+			// a new Name change rule only alerts until it is told to kick
+			nameAction:
+				c.action === 'alert' || c.action === 'kick'
+					? c.action
+					: kind === 'name_change'
+						? 'alert'
+						: 'kick',
+			takenOnly: b('takenOnly', false),
+			changes: n('changes', 1),
+			windowMinutes: n('windowMinutes', kind === 'name_change' ? 10 : 5),
 			maxKills: n('maxKills', 25),
 			headshotPct: n('headshotPct', 70),
 			headshotMinKills: n('headshotMinKills', 15),
@@ -726,6 +653,15 @@
 					builtinWords: f.builtinWords,
 					blocked: lines(f.blocked),
 					allowed: lines(f.allowed),
+					action: f.nameAction,
+					spareReserved: f.spareReserved,
+					reason: f.reason
+				};
+			case 'name_change':
+				return {
+					takenOnly: f.takenOnly,
+					changes: Number(f.changes),
+					windowMinutes: Number(f.windowMinutes),
 					action: f.nameAction,
 					spareReserved: f.spareReserved,
 					reason: f.reason
@@ -935,6 +871,16 @@
 					.filter(Boolean)
 					.join(' · ');
 			}
+			case 'name_change':
+				return [
+					c.takenOnly ? "taking another player's name" : 'any name change',
+					Number(c.changes) > 1 ? `${c.changes} changes in ${c.windowMinutes} min` : '',
+					c.action === 'kick'
+						? `kick${c.spareReserved ? ', flag reserved slots' : ''}`
+						: 'alert only'
+				]
+					.filter(Boolean)
+					.join(' · ');
 			case 'ping_kick':
 				return `ping over ${c.maxPingMs} ms for ${c.durationSeconds} s`;
 			case 'restart_notice':
@@ -1793,8 +1739,69 @@
 						</fieldset>
 					{/if}
 					<p class="note">
-						Names are checked as players join; a player who renames mid-session is caught on their
-						next join. Run the dry run before turning a word list loose.
+						Names are checked as players join and whenever they change. Run the dry run before
+						turning a word list loose.
+					</p>
+				{:else if f.kind === 'name_change'}
+					<fieldset class="space-y-1.5 text-[13px]">
+						<legend class="field-label">Count</legend>
+						<label class="flex items-center gap-2"
+							><input type="radio" value={false} bind:group={f.takenOnly} /> Every name change</label
+						>
+						<label class="flex items-center gap-2"
+							><input type="radio" value={true} bind:group={f.takenOnly} /> Only a change to another player's
+							name</label
+						>
+						<div class="flex flex-wrap items-center gap-2 border-t border-black pt-2">
+							<input
+								class="input w-20 text-right"
+								type="number"
+								min="1"
+								max="20"
+								bind:value={f.changes}
+								aria-label="Act at, name changes"
+								required
+							/>
+							or more changes within
+							<input
+								class="input w-20 text-right"
+								type="number"
+								min="1"
+								max="120"
+								bind:value={f.windowMinutes}
+								aria-label="Within, minutes"
+								required
+							/>
+							minutes
+						</div>
+					</fieldset>
+					<fieldset class="space-y-1.5 text-[13px]">
+						<legend class="field-label">Then</legend>
+						<label class="flex flex-wrap items-center gap-2"
+							><input type="radio" value="alert" bind:group={f.nameAction} /> Alert only
+							<span class="text-mist-600">(audit trail and Discord, nobody is kicked)</span></label
+						>
+						<label class="flex items-center gap-2"
+							><input type="radio" value="kick" bind:group={f.nameAction} /> Kick the player</label
+						>
+						{#if f.nameAction === 'kick'}
+							<label class="flex items-center gap-2 border-t border-black pt-2"
+								><input type="checkbox" bind:checked={f.spareReserved} /> Flag players with a reserved
+								slot instead</label
+							>
+						{/if}
+					</fieldset>
+					{#if f.nameAction === 'kick'}
+						<fieldset class="space-y-2">
+							<legend class="field-label">Kick reason, shown to the player</legend>
+							<input class="input" type="text" bind:value={f.reason} maxlength="200" />
+							{@render placeholders('name_change', [f.reason])}
+						</fieldset>
+					{/if}
+					<p class="note">
+						Names come from the kill feed: each time a player kills or dies, the name it shows is
+						held against the one the server lists them under. A clan tag put on, taken off or
+						swapped is not a change.
 					</p>
 				{:else if f.kind === 'ping_kick'}
 					<fieldset class="space-y-2">
