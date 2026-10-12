@@ -719,6 +719,19 @@ describe('restartNoticeStage', () => {
 		expect(restartNoticeStage({ ...cfg, leadMinutes: 0 }, null, at(23.9))).toBeNull();
 		expect(restartNoticeStage({ ...cfg, leadMinutes: 0 }, null, at(24))!.stage).toBe('due');
 	});
+	test('a daily time opens the window at that time UTC, not 24 hours up', () => {
+		// the start is midnight UTC, so 12:00 UTC comes twelve hours later
+		for (const source of ['config', 'manual'] as const) {
+			const schedule = { kind: 'daily', time: '12:00', source } as const;
+			const on = (hours: number) => ({ ...at(hours), schedule });
+			const lead = restartNoticeStage(cfg, null, on(11.6))!;
+			expect(lead.stage).toBe('lead');
+			expect(lead.minutes).toBe(24);
+			expect(restartNoticeStage(cfg, lead.state, on(12.1))!.stage).toBe('due');
+		}
+		// 24 hours up would still be twelve hours off
+		expect(restartNoticeStage(cfg, null, at(12.1))).toBeNull();
+	});
 });
 
 describe('team_kill', () => {
@@ -762,6 +775,10 @@ describe('team_kill', () => {
 			'Id.Item.ATMine',
 			'Id.Item.Claymore'
 		]);
+		expect(notCounted(['Id.Buildable.BarbedWire', 'VehicleExplosion'])).toEqual([
+			'Id.Buildable.BarbedWire',
+			'VehicleExplosion'
+		]);
 		expect(() => notCounted(['Barbed <b>wire</b>'])).toThrow('kill feed tag');
 		expect(() => notCounted(Array.from({ length: 41 }, (_, i) => `Id.Item.W${i}`))).toThrow(
 			'at most 40'
@@ -770,16 +787,41 @@ describe('team_kill', () => {
 
 	test('countsForTeamKill: any cause but those left out, in any case; an older rule leaves out barbed wire', () => {
 		const wire = 'Id.Buildable.BarbedWire';
+		const by = (cause: string | null) => ({ cause, tags: [] });
 		// saved before the list existed
-		expect(countsForTeamKill({}, wire)).toBe(false);
-		expect(countsForTeamKill({}, 'ID.BUILDABLE.BARBEDWIRE')).toBe(false);
-		expect(countsForTeamKill({}, 'Id.Item.AK74M')).toBe(true);
-		expect(countsForTeamKill({}, null)).toBe(true);
+		expect(countsForTeamKill({}, by(wire))).toBe(false);
+		expect(countsForTeamKill({}, by('ID.BUILDABLE.BARBEDWIRE'))).toBe(false);
+		expect(countsForTeamKill({}, by('Id.Item.AK74M'))).toBe(true);
+		expect(countsForTeamKill({}, by(null))).toBe(true);
 		// a list, even an empty one, is what the rule says
-		expect(countsForTeamKill({ notCounted: [] }, wire)).toBe(true);
-		expect(countsForTeamKill({ notCounted: ['Id.Item.Claymore'] }, wire)).toBe(true);
-		expect(countsForTeamKill({ notCounted: ['Id.Item.Claymore'] }, 'id.item.claymore')).toBe(false);
-		expect(countsForTeamKill({ notCounted: [wire] }, null)).toBe(true);
+		expect(countsForTeamKill({ notCounted: [] }, by(wire))).toBe(true);
+		expect(countsForTeamKill({ notCounted: ['Id.Item.Claymore'] }, by(wire))).toBe(true);
+		expect(countsForTeamKill({ notCounted: ['Id.Item.Claymore'] }, by('id.item.claymore'))).toBe(
+			false
+		);
+		expect(countsForTeamKill({ notCounted: [wire] }, by(null))).toBe(true);
+	});
+
+	test('countsForTeamKill: a crash is left out when the list holds it, in any case; a teammate who blows a vehicle up, or runs one over, still counts', () => {
+		const heli = 'Vehicle.Variant.Air.Rotary.Littlebird.Default';
+		const crash = { cause: heli, tags: ['VehicleExplosion'] };
+		const crashes = { notCounted: ['Id.Buildable.BarbedWire', 'VehicleExplosion'] };
+		expect(countsForTeamKill(crashes, crash)).toBe(false);
+		expect(countsForTeamKill({ notCounted: ['vehicleexplosion'] }, crash)).toBe(false);
+		// a rule without it, saved before the list or since
+		expect(countsForTeamKill({}, crash)).toBe(true);
+		expect(countsForTeamKill({ notCounted: ['Id.Buildable.BarbedWire'] }, crash)).toBe(true);
+		expect(
+			countsForTeamKill(crashes, { cause: 'Id.Item.C4Explosive', tags: ['VehicleExplosion'] })
+		).toBe(true);
+		expect(
+			countsForTeamKill(crashes, {
+				cause: 'Id.Vehicle.WeaponExtension.STN_01.MistralAA',
+				tags: ['VehicleExplosion']
+			})
+		).toBe(true);
+		expect(countsForTeamKill(crashes, { cause: heli, tags: ['RoadKill'] })).toBe(true);
+		expect(countsForTeamKill(crashes, { cause: null, tags: ['VehicleExplosion'] })).toBe(true);
 	});
 
 	test('teamKillStage: a whisper from warnAt on, a kick from kickAt on', () => {

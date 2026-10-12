@@ -40,9 +40,12 @@ const MATRIX: Record<string, Policy> = {
 	'orgs/[id]/seasons/+page.server.ts': 'orgOwner',
 	'orgs/[id]/bans/+page.server.ts': 'lists:ban',
 	'orgs/[id]/reserved/+page.server.ts': 'lists:reserve',
+	// "Group not found." is not a hidden answer: a group looked up before the role check fails it
+	'orgs/[id]/reserved/[groupId]/+page.server.ts': 'lists:reserve',
 	'orgs/[id]/players/+page.server.ts': 'lists',
 	'server/[id]/+layout.server.ts': 'cap:server.view',
 	'server/[id]/automation/+page.server.ts': 'cap:automation.manage',
+	'server/[id]/config/+page.server.ts': 'cap:server.view',
 	'server/[id]/bans/+page.server.ts': 'cap:server.view',
 	'server/[id]/slots/+page.server.ts': 'cap:server.view',
 	'server/[id]/settings/+page.server.ts': 'cap:server.view',

@@ -92,7 +92,7 @@ const LABELS: Record<string, string> = {
 	'Vehicle.Variant.Stationary.Phalanx': 'Vanguard CIWS',
 	'Vehicle.Variant.Stationary.Mortar': 'L81 mortar',
 	'Vehicle.Variant.Stationary.MistralAA': 'Talon 9K-SAM',
-	'Vehicle.Variant.Stationary.STN_05': 'STN 05',
+	'Vehicle.Variant.Stationary.STN_05': 'Drone',
 	'Vehicle.Variant.Stationary.Loudspeaker': 'Loudspeaker',
 	// Vehicle weapons
 	'Id.Vehicle.WeaponExtension.ROT_02.30mmCannon': 'Havoc 2A42 autocannon',
@@ -109,15 +109,29 @@ const LABELS: Record<string, string> = {
 	'Id.Vehicle.WeaponExtension.WHL_05.RingMinigun': 'Humvee minigun',
 	'Id.Vehicle.WeaponExtension.WHL_07.MachineGun': 'Ural Defender M249',
 	'Id.Vehicle.WeaponExtension.STN_01.MistralAA': 'Talon 9K-SAM',
-	'Id.Vehicle.WeaponExtension.STN_02.MainCannon': 'STN 02 main cannon',
-	'Id.Vehicle.WeaponExtension.STN_03.MainBarrel': 'STN 03 main gun',
-	'Id.Vehicle.WeaponExtension.STN_05.MainBarrel': 'STN 05 main gun'
+	'Id.Vehicle.WeaponExtension.STN_02.MainCannon': 'Vanguard CIWS',
+	// the mortar's shells; Vehicle.Variant.Stationary.Mortar is the mortar itself (a roadkill, its blast)
+	'Id.Vehicle.WeaponExtension.STN_03.MainBarrel': 'L81 mortar',
+	'Id.Vehicle.WeaponExtension.STN_05.MainBarrel': 'Drone'
 };
 /**
  * What a Team kill limit leaves out of its count unless its settings say otherwise: a player who
  * runs into a teammate's barbed wire is reported as killed by whoever built it.
  */
 export const TEAM_KILL_NOT_COUNTED: readonly string[] = ['Id.Buildable.BarbedWire'];
+/**
+ * The entry of a Team kill limit's list that leaves out crashes, by the feed's own tag: a vehicle
+ * that blows up kills whoever is aboard, and the feed reports each death as a kill by its driver
+ * or pilot, with the vehicle as the cause. A vehicle blown up by a weapon has that weapon as the
+ * cause instead, so a teammate's charge or rocket is not a crash.
+ */
+export const VEHICLE_CRASH = 'VehicleExplosion';
+/** Whether a kill is a crash: a vehicle's own blast, reported as its driver's or pilot's kill. */
+export const isVehicleCrash = (k: { cause: string | null; tags: readonly string[] }): boolean =>
+	causeKind(k.cause) === 'vehicle' && k.tags.includes(VEHICLE_CRASH);
+/** An entry of a Team kill limit's list by name. */
+export const notCountedLabel = (entry: string): string =>
+	entry.toLowerCase() === VEHICLE_CRASH.toLowerCase() ? 'Vehicle crash' : causeLabel(entry);
 
 /** The table by lower-case tag, for a lookup in any case. */
 const BY_TAG = new Map(

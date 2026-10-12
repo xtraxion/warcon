@@ -21,7 +21,7 @@
 	import { STATUS_STYLE_LABELS, STATUS_STYLES, type StatusStyle } from '$lib/status-styles';
 	import CardOptions from '$lib/components/CardOptions.svelte';
 	import { FEATURE_LABELS, PUBLIC_FEATURES, allowed } from '$lib/features';
-	import { FAILURES_ONLY, RULE_GROUPS, RULE_KINDS } from '$lib/rule-kinds';
+	import { FAILURES_ONLY, NO_ACTIONS, RULE_GROUPS, RULE_KINDS } from '$lib/rule-kinds';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -748,10 +748,11 @@
 			</div>
 			<p class="mb-3 text-[13px] text-mist-400">
 				A webhook is one Discord channel, and each one carries what you tick for it: the audit trail
-				(bans, kicks, trigger actions, sign-ins), team kills from the kill feed, and live status
-				cards, one per server, showing the map and who is on. Add one webhook per channel; a
-				team-kill channel is simply a webhook with only that box ticked. In Discord, open the
-				channel's settings → Integrations → Webhooks, copy the URL and paste it here.
+				(bans, kicks, trigger actions, sign-ins), team kills from the kill feed, bounties set and
+				claimed by a Bounty rule, and live status cards, one per server, showing the map and who is
+				on. Add one webhook per channel; a team-kill or bounty channel is simply a webhook with only
+				that box ticked. In Discord, open the channel's settings → Integrations → Webhooks, copy the
+				URL and paste it here.
 			</p>
 			{#each data.webhooks as w (w.id)}
 				<div class="kv items-start">
@@ -1069,7 +1070,7 @@
 											<span class="block caps text-[10px] text-mist-400 {i ? 'pt-1.5' : 'pt-0.5'}"
 												>{g}</span
 											>
-											{#each RULE_KINDS.filter((k) => k.group === g) as k (k.kind)}
+											{#each RULE_KINDS.filter((k) => k.group === g && !NO_ACTIONS.includes(k.kind)) as k (k.kind)}
 												<label class="flex items-center gap-2 text-[13px]"
 													><input type="checkbox" bind:checked={d.kinds[k.kind]} />
 													{k.label}{#if FAILURES_ONLY.includes(k.kind)}<span

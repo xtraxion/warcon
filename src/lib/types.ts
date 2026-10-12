@@ -3,6 +3,7 @@ import type { StatusStyle } from './status-styles';
 import type { OrgRole } from '$lib/server/access';
 import type { BuiltinRole, Capability } from '$lib/capabilities';
 import type { BanReason } from '$lib/ban-reasons';
+import type { ManualRestart } from '$lib/uptime';
 
 export type { OrgRole, Capability, BuiltinRole };
 
@@ -65,6 +66,8 @@ export interface ServerInfo {
 	publicLeaderboards: boolean;
 	/** the public status page also carries the last kills */
 	publicKills: boolean;
+	/** an owner's own restart time (UTC), used instead of the game's; null: the game decides */
+	restartSchedule: ManualRestart | null;
 	/** what the site owner allows this server's organisation */
 	allowPublicStatus: boolean;
 	allowPublicLeaderboards: boolean;
@@ -145,6 +148,13 @@ export interface LiveView {
 	 * reserved players, on top of `status.maxPlayers`; null until the worker has read it
 	 */
 	reservedSlots: number | null;
+	/**
+	 * RestartTimeUtc ("HH:MM", UTC) from the config document as the running process started with
+	 * it, and as the document holds it now (in effect from the next restart); null when unset or
+	 * not read yet
+	 */
+	restartTimeUtc?: string | null;
+	restartTimeUtcFile?: string | null;
 	/** set while the listener has asked the panel to slow down (429 with Retry-After) */
 	throttledUntil: string | null;
 	status: Status | null;
@@ -556,7 +566,10 @@ export type TriggerKind =
 	| 'two_teams'
 	| 'kill_distance'
 	| 'afk_protection'
-	| 'name_change';
+	| 'name_change'
+	| 'bounty'
+	| 'rotation_shuffle'
+	| 'live_name';
 
 export interface TriggerView {
 	id: string;
@@ -570,6 +583,19 @@ export interface TriggerView {
 	createdAt: string | null;
 	/** an AFK protection rule's standing: acting while the server seeds, or off since a match went live */
 	phase?: { on: boolean; since: string | null; why: string } | null;
+	/** a Bounty rule's open bounty: on whom, the run that set it, and when */
+	bounty?: { steamId: string; name: string; streak: number; setAt: string } | null;
+	/**
+	 * a Live server name rule's last write (the name and when) and why the latest try wrote nothing
+	 * ('' when it did); `restored` once its own name went back after it was switched off
+	 */
+	liveName?: {
+		name: string;
+		at: string | null;
+		refused: string;
+		since: string | null;
+		restored: boolean;
+	} | null;
 }
 
 export interface DryRunResult {
@@ -703,7 +729,32 @@ export interface OrgListsView {
 		/** why the last run could not reach or finish on the server */
 		lastError: string;
 	}[];
+	/** the org's default lists of the kinds the reader edits */
 	lists: ListView[];
+	/** the org's reserved-slot groups; empty unless the reader edits reserved slots */
+	groups: SlotGroupView[];
+}
+
+/**
+ * A reserved-slot group: a list of the org's beside its default one, on in a window (switched on
+ * and off by hand or set ahead), on every server or chosen ones.
+ */
+export interface SlotGroupView {
+	id: string;
+	name: string;
+	/** on right now */
+	on: boolean;
+	/** when the window opens; null when it is open since it was switched on, or there is none */
+	onFrom: string | null;
+	/** when it closes, or closed; null while on until switched off */
+	onUntil: string | null;
+	/** on every server of the org, now and later; else the servers chosen */
+	everyServer: boolean;
+	servers: { id: string; name: string }[];
+	entryCount: number;
+	/** its players whose slot was taken out of a server's document and that server keeps until it restarts */
+	leaving: number;
+	createdAt: string;
 }
 
 export interface ImportCandidate {
@@ -740,6 +791,8 @@ export interface ReservedSlotState {
 	member: boolean;
 	/** the list a managed slot comes from: the organisation's, or this server's own */
 	scope: 'org' | 'server';
+	/** the organisation's group the slot comes from, for staff (as the note); null otherwise */
+	group: string | null;
 	/** when the panel lifts the slot; null for a permanent one (or one not managed) */
 	expiresAt: string | null;
 }

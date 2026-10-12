@@ -9,10 +9,14 @@ import { validateKillDistance, type KillDistanceConfig } from './kill-distance';
 import { validateTwoTeams, type TwoTeamsConfig } from './two-teams';
 import { validateAfkProtection, type AfkProtectionConfig } from './afk-protection';
 import { validateNameChange, type NameChangeConfig } from './name-change';
+import { validateBounty, type BountyConfig } from './bounty';
+import { validateRotationShuffle, type RotationShuffleConfig } from './rotation-shuffle';
+import { validateLiveName } from './live-name';
+import type { LiveNameConfig } from '$lib/live-name';
 import { causeTags } from './cause-tags';
-import { RESTART_AFTER_HOURS, restartWindow } from '$lib/uptime';
+import { MAX_RESTART_LEAD_MINUTES, restartWindow, type RestartSchedule } from '$lib/uptime';
 import { MAX_CHAT } from '$lib/chat';
-import { TEAM_KILL_NOT_COUNTED } from '$lib/causes';
+import { isVehicleCrash, TEAM_KILL_NOT_COUNTED, VEHICLE_CRASH } from '$lib/causes';
 import { mapName } from '$lib/format';
 import { UNKNOWN } from './message-vars';
 import type { SteamProfileRow } from './db/schema';
@@ -34,7 +38,10 @@ export const TRIGGER_KINDS: TriggerKind[] = [
 	'two_teams',
 	'kill_distance',
 	'afk_protection',
-	'name_change'
+	'name_change',
+	'bounty',
+	'rotation_shuffle',
+	'live_name'
 ];
 export const TRIGGER_LABELS: Record<TriggerKind, string> = {
 	welcome: 'Welcome whisper',
@@ -52,7 +59,10 @@ export const TRIGGER_LABELS: Record<TriggerKind, string> = {
 	two_teams: 'Team balance',
 	kill_distance: 'Kill distance watch',
 	afk_protection: 'AFK protection',
-	name_change: 'Name change watch'
+	name_change: 'Name change watch',
+	bounty: 'Bounty',
+	rotation_shuffle: 'Rotation shuffle',
+	live_name: 'Live server name'
 };
 
 export interface WelcomeConfig {
@@ -140,10 +150,10 @@ export function pingKickStep(
 	return { state: next, kicks };
 }
 /**
- * Tells players about the game's own restart: WARDOGS restarts a server once it has been up for
- * 24 hours, at the end of the round then in progress. Two broadcasts per uptime cycle: a
- * heads-up `leadMinutes` before the window opens (0 = none) and `message` once it has, repeated
- * every `repeatMinutes` while the round drags on (0 = once).
+ * Tells players about the server's next restart ($lib/uptime's restartScheduleOf: daily at a
+ * time UTC, or 24 hours up), which happens at the end of the round then in progress. Two broadcasts per game start: a heads-up `leadMinutes` before the window opens
+ * (0 = none) and `message` once it has, repeated every `repeatMinutes` while the round drags on
+ * (0 = once).
  */
 export interface RestartNoticeConfig {
 	message: string;
@@ -155,9 +165,9 @@ export interface RestartNoticeConfig {
 /**
  * Acts on team kills the kill feed reports, counted per killer within each match: a whisper
  * from `warnAt` team kills on (0 = never), a kick at `kickAt` (0 = never). Team kills by a cause
- * in `notCounted` (feed tags, any case) are left out of the count and never acted on; they stay
- * team kills everywhere else. A rule saved before the list existed has none and leaves out
- * TEAM_KILL_NOT_COUNTED.
+ * in `notCounted` (feed tags, any case) are left out of the count and never acted on, and so are
+ * crashes when it holds VEHICLE_CRASH; they stay team kills everywhere else. A rule saved before
+ * the list existed has none and leaves out TEAM_KILL_NOT_COUNTED.
  */
 export interface TeamKillConfig {
 	warnAt: number;
@@ -214,7 +224,10 @@ export type TriggerConfig =
 	| TwoTeamsConfig
 	| KillDistanceConfig
 	| AfkProtectionConfig
-	| NameChangeConfig;
+	| NameChangeConfig
+	| BountyConfig
+	| RotationShuffleConfig
+	| LiveNameConfig;
 
 /** A kick reason: not chat, so not held to the game's chat cap. */
 export const MAX_REASON = 200;
@@ -326,7 +339,7 @@ export function validateConfig(kind: TriggerKind, raw: unknown): TriggerConfig {
 		case 'restart_notice': {
 			const message = str(c.message, MAX_CHAT);
 			if (!message) throw new ApiError(400, 'The restart message is empty.');
-			const leadMinutes = int(c.leadMinutes, 0, 0, RESTART_AFTER_HOURS * 60 - 1);
+			const leadMinutes = int(c.leadMinutes, 0, 0, MAX_RESTART_LEAD_MINUTES);
 			const leadMessage = str(c.leadMessage, MAX_CHAT);
 			if (leadMinutes && !leadMessage)
 				throw new ApiError(400, 'Add the heads-up message, or set the heads-up to 0 minutes.');
@@ -407,6 +420,12 @@ export function validateConfig(kind: TriggerKind, raw: unknown): TriggerConfig {
 			return validateAfkProtection(c);
 		case 'name_change':
 			return validateNameChange(c);
+		case 'bounty':
+			return validateBounty(c);
+		case 'rotation_shuffle':
+			return validateRotationShuffle(c);
+		case 'live_name':
+			return validateLiveName(c);
 	}
 }
 
@@ -554,14 +573,14 @@ export function broadcastWanted(
 export const teamKillNotCounted = (cfg: Pick<TeamKillConfig, 'notCounted'>): readonly string[] =>
 	Array.isArray(cfg.notCounted) ? cfg.notCounted : TEAM_KILL_NOT_COUNTED;
 
-/** Whether a team-kill rule counts a team kill by this cause: one with no cause always counts. */
+/** Whether a team-kill rule counts a team kill: one with no cause always counts. */
 export function countsForTeamKill(
 	cfg: Pick<TeamKillConfig, 'notCounted'>,
-	cause: string | null | undefined
+	k: { cause: string | null; tags: readonly string[] }
 ): boolean {
-	if (!cause) return true;
-	const lower = cause.toLowerCase();
-	return !teamKillNotCounted(cfg).some((c) => c.toLowerCase() === lower);
+	const left = teamKillNotCounted(cfg).map((c) => c.toLowerCase());
+	if (left.includes(VEHICLE_CRASH.toLowerCase()) && isVehicleCrash(k)) return false;
+	return !k.cause || !left.includes(k.cause.toLowerCase());
 }
 
 /** What a team-kill rule does once the killer's count this match has reached `count`. */
@@ -599,10 +618,16 @@ const SAME_START_MS = 60_000;
 export function restartNoticeStage(
 	cfg: Pick<RestartNoticeConfig, 'leadMinutes' | 'repeatMinutes' | 'minPlayers'>,
 	prev: RestartNoticeState | null | undefined,
-	input: { startedAt: number; playerCount: number; now: number }
+	input: {
+		startedAt: number;
+		playerCount: number;
+		now: number;
+		/** the server's restart schedule (restartScheduleOf); null or undefined is 24 hours up */
+		schedule?: RestartSchedule | null;
+	}
 ): RestartNoticeStage | null {
 	if (!input.startedAt || input.playerCount < cfg.minPlayers) return null;
-	const w = restartWindow(new Date(input.startedAt).toISOString(), RESTART_AFTER_HOURS, input.now);
+	const w = restartWindow(new Date(input.startedAt).toISOString(), input.schedule, input.now);
 	if (!w) return null;
 	// The start is derived from the uptime at each look, so it moves by the look's latency: a
 	// start within SAME_START_MS of the one on record is the same run, not a restart.
