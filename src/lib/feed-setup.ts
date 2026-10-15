@@ -14,10 +14,11 @@ export const usesEventFeed = (sections: ConfigSection[] | null | undefined): boo
 /**
  * The lines for the RCON block: the feed switched on, this panel as one of its endpoints, and the
  * name the game sends with each batch (Warcon goes by the token, but the game may want one).
+ * Season 2 (CL-516586) posts to the Url exactly as written, so the full ingest path is included.
  */
 export const eventFeedLines = (url: string, token: string, name: string): string =>
 	[
 		'bEventFeedEnabled=True',
-		`+EventFeedEndpoints=(Url="${url}",Token="${token}")`,
+		`+EventFeedEndpoints=(Url="${url.replace(/\/$/, '')}/api/ingest/events",Token="${token}")`,
 		`EventFeedServerName="${name.replace(/["\r\n]/g, '').trim()}"`
 	].join('\n');
