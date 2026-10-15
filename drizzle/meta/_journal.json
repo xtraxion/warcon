@@ -1,349 +1,362 @@
 {
     "version": "7",
-    "dialect": "postgresql",
     "entries": [
         {
             "idx": 0,
-            "version": "7",
-            "when": 1788878620622,
+            "id": "0000",
             "tag": "0000_init",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923176
         },
         {
             "idx": 1,
-            "version": "7",
-            "when": 1788894912998,
+            "id": "0001",
             "tag": "0001_organizations",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 2,
-            "version": "7",
-            "when": 1788902031327,
+            "id": "0002",
             "tag": "0002_org_limits",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 3,
-            "version": "7",
-            "when": 1788913601789,
+            "id": "0003",
             "tag": "0003_server_allow_private",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 4,
-            "version": "7",
-            "when": 1788977949275,
+            "id": "0004",
             "tag": "0004_audit_scrub_secrets",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 5,
-            "version": "7",
-            "when": 1788982266509,
+            "id": "0005",
             "tag": "0005_player_intel_triggers_webhooks",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 6,
-            "version": "7",
-            "when": 1788986584534,
+            "id": "0006",
             "tag": "0006_org_lists",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 7,
-            "version": "7",
-            "when": 1788996010094,
+            "id": "0007",
             "tag": "0007_sample_cash",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 8,
-            "version": "7",
-            "when": 1788996826671,
+            "id": "0008",
             "tag": "0008_jsonb_repair",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 9,
-            "version": "7",
-            "when": 1789039830921,
+            "id": "0009",
             "tag": "0009_live_outbox_settings",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 10,
-            "version": "7",
-            "when": 1789041561121,
+            "id": "0010",
             "tag": "0010_sample_rollups",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 11,
-            "version": "7",
-            "when": 1789053666672,
+            "id": "0011",
             "tag": "0011_default_org",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 12,
-            "version": "7",
-            "when": 1789177968588,
+            "id": "0012",
             "tag": "0012_org_roles",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 13,
-            "version": "7",
-            "when": 1789179311466,
+            "id": "0013",
             "tag": "0013_api_keys",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 14,
-            "version": "7",
-            "when": 1789314871858,
+            "id": "0014",
             "tag": "0014_webhook_status",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 15,
-            "version": "7",
-            "when": 1789382776572,
+            "id": "0015",
             "tag": "0015_server_identity",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 16,
-            "version": "7",
-            "when": 1789425485107,
+            "id": "0016",
             "tag": "0016_live_started_at",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 17,
-            "version": "7",
-            "when": 1789429887927,
+            "id": "0017",
             "tag": "0017_reserved_uncapped",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 18,
-            "version": "7",
-            "when": 1789475867742,
+            "id": "0018",
             "tag": "0018_auth_methods",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 19,
-            "version": "7",
-            "when": 1789601028948,
+            "id": "0019",
             "tag": "0019_kill_feed",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 20,
-            "version": "7",
-            "when": 1789610368583,
+            "id": "0020",
             "tag": "0020_seed_seconds",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 21,
-            "version": "7",
-            "when": 1789663103965,
+            "id": "0021",
             "tag": "0021_public_features",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 22,
-            "version": "7",
-            "when": 1789672247969,
+            "id": "0022",
             "tag": "0022_public_allowed_by_default",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 23,
-            "version": "7",
-            "when": 1789680771266,
+            "id": "0023",
             "tag": "0023_public_kills",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 24,
-            "version": "7",
-            "when": 1789687548128,
+            "id": "0024",
             "tag": "0024_server_lists",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 25,
-            "version": "7",
-            "when": 1789762927998,
+            "id": "0025",
             "tag": "0025_no_addresses",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 26,
-            "version": "7",
-            "when": 1789765933474,
+            "id": "0026",
             "tag": "0026_unreachable_text",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 27,
-            "version": "7",
-            "when": 1789859027946,
+            "id": "0027",
             "tag": "0027_ban_message",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 28,
-            "version": "7",
-            "when": 1789936870570,
+            "id": "0028",
             "tag": "0028_steam_friends",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 29,
-            "version": "7",
-            "when": 1789945728462,
+            "id": "0029",
             "tag": "0029_panel_bans",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 30,
-            "version": "7",
-            "when": 1790081560841,
+            "id": "0030",
             "tag": "0030_keep_everything",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923177
         },
         {
             "idx": 31,
-            "version": "7",
-            "when": 1790082146351,
+            "id": "0031",
             "tag": "0031_match_players",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923178
         },
         {
             "idx": 32,
-            "version": "7",
-            "when": 1790082629638,
+            "id": "0032",
             "tag": "0032_match_players_backfill",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923178
         },
         {
             "idx": 33,
-            "version": "7",
-            "when": 1790106668581,
+            "id": "0033",
             "tag": "0033_org_list_capabilities",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923178
         },
         {
             "idx": 34,
-            "version": "7",
-            "when": 1790347290706,
+            "id": "0034",
             "tag": "0034_json_webhooks",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923178
         },
         {
             "idx": 35,
-            "version": "7",
-            "when": 1790637099022,
+            "id": "0035",
             "tag": "0035_team_kill_match_texts",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790838923178
         },
         {
             "idx": 36,
-            "version": "7",
-            "when": 1790877877865,
+            "id": "0036",
             "tag": "0036_player_action_capabilities",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1790893327126
         },
         {
             "idx": 37,
-            "version": "7",
-            "when": 1791069654398,
+            "id": "0037",
             "tag": "0037_read_and_write_indexes",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1791123609389
+        },
+        {
+            "idx": 38,
+            "id": "0038",
+            "tag": "0038_server_feed_relays",
+            "breakpoints": true,
+            "when": 1791121540057
         },
         {
             "idx": 39,
-            "version": "7",
-            "when": 1791109561028,
+            "id": "0039",
             "tag": "0039_player_totals",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1791237286109
         },
         {
             "idx": 40,
-            "version": "7",
-            "when": 1791142161935,
+            "id": "0040",
             "tag": "0040_player_days",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1791458688542
         },
         {
             "idx": 41,
-            "version": "7",
-            "when": 1791305520229,
+            "id": "0041",
             "tag": "0041_seasons",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1791458688543
         },
         {
             "idx": 42,
-            "version": "7",
-            "when": 1791324194967,
+            "id": "0042",
             "tag": "0042_org_ban_reasons",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1791458688543
         },
         {
             "idx": 43,
-            "version": "7",
-            "when": 1791329296794,
+            "id": "0043",
             "tag": "0043_player_aliases",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1791458688543
         },
         {
             "idx": 44,
-            "version": "7",
-            "when": 1791332646106,
+            "id": "0044",
             "tag": "0044_org_board_hidden",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1791458688543
         },
         {
             "idx": 45,
-            "version": "7",
-            "when": 1791381639365,
+            "id": "0045",
             "tag": "0045_webhook_trigger_kinds",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1791458688543
         },
         {
-            "idx": 57,
-            "version": "7",
-            "when": 1791381639377,
+            "idx": 46,
+            "id": "0046",
             "tag": "0046_reserved_flags",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1791812730815
         },
         {
-            "idx": 58,
-            "version": "7",
-            "when": 1791381639378,
+            "idx": 47,
+            "id": "0047",
             "tag": "0047_slot_groups",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1791812730815
         },
         {
-            "idx": 59,
-            "version": "7",
-            "when": 1791381639379,
+            "idx": 48,
+            "id": "0048",
             "tag": "0048_match_players_from_feed",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1791812730815
         },
         {
-            "idx": 60,
-            "version": "7",
-            "when": 1791381639380,
+            "idx": 49,
+            "id": "0049",
             "tag": "0049_restart_schedule",
-            "breakpoints": true
+            "breakpoints": true,
+            "when": 1791812730815
+        },
+        {
+            "idx": 50,
+            "id": "0050",
+            "tag": "0050_feed_match_events",
+            "breakpoints": true,
+            "when": 1792070204034
         }
     ]
 }
