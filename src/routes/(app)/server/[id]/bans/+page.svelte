@@ -60,7 +60,7 @@
 		reason: string;
 		expiresAt: string | null;
 	}
-	const utc = (iso: string) => iso.slice(0, 16).replace('T', ' ');
+	const utc = (iso: string | Date) => { const s = typeof iso === 'string' ? iso : iso.toISOString(); return s.slice(0, 16).replace('T', ' '); };
 	let rows = $derived.by(() => {
 		const held = new Set(bans.map((b) => b.steamId));
 		const row = (steamId: string, b: Ban | null): Row => {
