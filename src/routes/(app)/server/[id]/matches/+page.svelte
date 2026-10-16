@@ -55,7 +55,7 @@
 <div class="panel">
 	<div class="mb-3 flex items-center gap-2 text-[12.5px] text-mist-400">
 		<span class="text-mist-200">
-			{#if view}{hideEmpty ? `${filteredMatches.length} / ${view.total}` : view.total} match{view.total === 1 ? '' : 'es'}{#if loading}
+			{#if view}{view.total} match{view.total === 1 ? '' : 'es'}{#if loading}
 					· loading…{/if}{:else}Loading…{/if}
 		</span>
 		<span class="ml-auto inline-flex items-center gap-1.5">
@@ -68,6 +68,12 @@
 			<label for="hide-empty" class="cursor-pointer select-none">Hide empty</label>
 		</span>
 	</div>
+	{#if hideEmpty && filteredMatches.length < (view?.matches ?? []).length}
+		<p class="note">
+			Showing {filteredMatches.length} of {(view?.matches ?? []).length} matches on this page
+			(abandoned, draw, or &lt;20 players hidden).
+		</p>
+	{/if}
 	<MatchList
 		matches={filteredMatches}
 		live={view?.live ?? []}
