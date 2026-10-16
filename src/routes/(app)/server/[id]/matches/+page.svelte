@@ -55,7 +55,7 @@
 <div class="panel">
 	<div class="mb-3 flex items-center gap-2 text-[12.5px] text-mist-400">
 		<span class="text-mist-200">
-			{#if view}{view.total} match{view.total === 1 ? '' : 'es'}{#if loading}
+			{#if view}{hideEmpty ? `${filteredMatches.length} / ${view.total}` : view.total} match{view.total === 1 ? '' : 'es'}{#if loading}
 					· loading…{/if}{:else}Loading…{/if}
 		</span>
 		<span class="ml-auto inline-flex items-center gap-1.5">
