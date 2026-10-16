@@ -7,7 +7,7 @@
 	import { api, errorMessage, qs } from '$lib/api';
 	import { toast } from '$lib/toast.svelte';
 	import MatchList from '$lib/components/MatchList.svelte';
-	import { parsePage, type MatchListView } from '$lib/matches';
+	import { parsePage, resultLine, type MatchListView } from '$lib/matches';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -15,6 +15,7 @@
 	let current = $state(parsePage(page.url.searchParams.get('page')));
 	let view = $state<MatchListView | null>(null);
 	let loading = $state(false);
+	let hideEmpty = $state(false);
 	let seq = 0;
 
 	async function load(p: number) {
@@ -40,6 +41,15 @@
 		if (url.search !== page.url.search) replaceState(url, {});
 		void load(p);
 	});
+
+	function isEmpty(m: MatchListView['matches'][number]): boolean {
+		const r = resultLine(m);
+		if (r.kind === 'abandoned' || r.kind === 'draw') return true;
+		const players = m.endedAt ? m.players || m.peakPlayers : m.peakPlayers;
+		if (players < 20) return true;
+		return false;
+	}
+	let filteredMatches = $derived(hideEmpty ? (view?.matches ?? []).filter((m) => !isEmpty(m)) : (view?.matches ?? []));
 </script>
 
 <div class="panel">
@@ -48,9 +58,18 @@
 			{#if view}{view.total} match{view.total === 1 ? '' : 'es'}{#if loading}
 					· loading…{/if}{:else}Loading…{/if}
 		</span>
+		<span class="ml-auto inline-flex items-center gap-1.5">
+			<input
+				id="hide-empty"
+				type="checkbox"
+				class="checkbox"
+				bind:checked={hideEmpty}
+			/>
+			<label for="hide-empty" class="cursor-pointer select-none">Hide empty</label>
+		</span>
 	</div>
 	<MatchList
-		matches={view?.matches ?? []}
+		matches={filteredMatches}
 		live={view?.live ?? []}
 		{loading}
 		hrefFor={(m) => `/server/${encodeURIComponent(id)}/matches/${m.id}`}
