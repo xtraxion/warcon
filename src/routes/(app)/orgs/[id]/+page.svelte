@@ -201,6 +201,19 @@
 			return;
 		await run(() => api('DELETE', `${orgPath}/invites/${inv.id}`), 'Invite link revoked.');
 	}
+	async function deleteInviteLink(inv: InviteView) {
+		if (
+			!(await confirmDialog(
+				`Delete the invite link "${inv.label || '—'}" permanently? This cannot be undone.`,
+				{ okLabel: 'Delete', danger: true }
+			))
+		)
+			return;
+		await run(
+			() => api('DELETE', `${orgPath}/invites/${inv.id}?permanent=1`),
+			'Invite link deleted.'
+		);
+	}
 
 	function setRole(m: OrgMemberView, role: string) {
 		void run(
@@ -527,6 +540,10 @@
 											<button class="btn btn-sm" onclick={() => copy(inv.url)}>Copy link</button>
 											<button class="btn btn-sm btn-danger" onclick={() => revoke(inv)}
 												>Revoke</button
+											>
+										{:else}
+											<button class="btn btn-sm btn-danger" onclick={() => deleteInviteLink(inv)}
+												>Delete</button
 											>
 										{/if}
 									</span>

@@ -831,6 +831,29 @@ export async function revokeInvite(
 	});
 }
 
+export async function deleteInvite(
+	env: Env,
+	req: Request,
+	actor: SessionUser,
+	org: OrgRow,
+	inviteId: string
+): Promise<void> {
+	const [inv] = await env.db
+		.delete(orgInvites)
+		.where(and(eq(orgInvites.id, inviteId), eq(orgInvites.orgId, org.id)))
+		.returning({ id: orgInvites.id });
+	if (!inv) throw new ApiError(404, 'Invite not found.');
+	await writeAudit(env, req, {
+		actor,
+		orgId: org.id,
+		category: 'org',
+		action: 'org.invite.delete',
+		outcome: 'ok',
+		target: org.name,
+		detail: { orgId: org.id, inviteId }
+	});
+}
+
 export async function findInvite(
 	env: Env,
 	token: string
