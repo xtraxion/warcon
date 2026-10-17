@@ -12,6 +12,7 @@
 	import type { ListSyncServer, ListSyncSummary } from '$lib/types';
 	import Modal from './Modal.svelte';
 	import SteamName from './SteamName.svelte';
+	import SavedMessages from './SavedMessages.svelte';
 
 	let {
 		orgId,
@@ -189,15 +190,35 @@
 			</p>
 		{/if}
 
-		<label class="block"
-			><span class="field-label">Reason</span><input
-				class="input"
-				type="text"
-				placeholder="Optional, shown in the server's ban list"
-				maxlength="200"
-				bind:value={reason}
-			/></label
-		>
+		{#if server}
+			<SavedMessages
+				server={{ id: server.id, orgId, orgName, manager: false }}
+				label="Reason"
+				labelFor="ban-reason"
+				inputId="ban-reason"
+				value={reason}
+				onpick={(text) => (reason = text)}
+			>
+				<input
+					id="ban-reason"
+					class="input"
+					type="text"
+					placeholder="Optional, shown in the server's ban list"
+					maxlength="200"
+					bind:value={reason}
+				/>
+			</SavedMessages>
+		{:else}
+			<label class="block"
+				><span class="field-label">Reason</span><input
+					class="input"
+					type="text"
+					placeholder="Optional, shown in the server's ban list"
+					maxlength="200"
+					bind:value={reason}
+				/></label
+			>
+		{/if}
 		{#if reasons.length}
 			<div class="flex flex-wrap gap-1.5">
 				{#each reasons as r (r.label)}

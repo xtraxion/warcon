@@ -632,26 +632,38 @@
 							>
 						</div>
 					</SavedMessages>
-					<div class="join join-wrap mt-2 w-full">
-						<input
-							class="input"
-							type="text"
-							placeholder="Reason (optional)…"
-							maxlength="200"
-							bind:value={reason}
-						/>
-						<button
-							class="btn btn-danger"
-							disabled={busy || !canKick}
-							onclick={() =>
-								act('kick', { steamId: d.steamId, reason: reason.trim() }, `Kick ${d.name}?`)}
-							>Kick</button
+					<div class="mt-2 w-full">
+						<SavedMessages
+							server={data.server}
+							label="Reason"
+							labelFor="dossier-kick-reason"
+							inputId="dossier-kick-reason"
+							value={reason}
+							onpick={(text) => (reason = text)}
 						>
-						<button
-							class="btn btn-danger"
-							disabled={busy || !canBanAny}
-							onclick={() => (banning = true)}>Ban…</button
-						>
+							<input
+								id="dossier-kick-reason"
+								class="input w-full"
+								type="text"
+								placeholder="Reason (optional)…"
+								maxlength="200"
+								bind:value={reason}
+							/>
+						</SavedMessages>
+						<div class="mt-2 flex gap-2 w-full">
+							<button
+								class="btn btn-danger flex-1"
+								disabled={busy || !canKick}
+								onclick={() =>
+									act('kick', { steamId: d.steamId, reason: reason.trim() }, `Kick ${d.name}?`)}
+								>Kick</button
+							>
+							<button
+								class="btn btn-danger flex-1"
+								disabled={busy || !canBanAny}
+								onclick={() => (banning = true)}>Ban…</button
+							>
+						</div>
 					</div>
 				{:else}
 					<p class="text-[13px] text-mist-400">
