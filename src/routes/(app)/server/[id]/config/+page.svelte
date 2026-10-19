@@ -9,7 +9,15 @@
 	import { getScalar, parseIni, setScalarInText } from '$lib/config-doc';
 	import { lockedKeys, S_SESSION } from '$lib/config-fields';
 	import { EVENT_FEED_SECTION, eventFeedLines, usesEventFeed } from '$lib/feed-setup';
-	import { fmtTime } from '$lib/format';
+	import { fmtAgo, fmtNum, fmtTime } from '$lib/format';
+	import type { FeedState } from '$lib/feed-health';
+	import {
+		feedDiagnosis,
+		isPanel,
+		type FeedDiagnosis,
+		type FeedFault,
+		type FeedReport
+	} from '$lib/feed-report';
 	import type { ConfigDoc, ConfigResult, Status } from '$lib/types';
 	import type { PageProps } from './$types';
 
@@ -44,6 +52,9 @@
 		url: string;
 		token: string;
 		feedAt: string | null;
+		startedAt: string | null;
+		tokenAt: string | null;
+		state: FeedState;
 	}
 	let feed = $state<FeedSetup | null>(null);
 	let feedBusy = $state(false);
@@ -141,74 +152,6 @@
 		if (!failure)
 			toast('Kill feed configured. The game starts posting after its next restart.', 'ok');
 	}
-
-	// ---- Kill feed relays ----
-	interface Relay {
-		id: string;
-		label: string;
-		url: string;
-		token: string;
-		enabled: boolean;
-		createdAt: string;
-	}
-	let relays = $state<Relay[]>([]);
-	let relayBusy = $state(false);
-	let relayPath = $derived(`/api/servers/${encodeURIComponent(id)}/feed/relay`);
-	let newRelayLabel = $state('');
-	let newRelayUrl = $state('');
-	let newRelayToken = $state('');
-	async function loadRelays() {
-		try {
-			const r = await api<{ relays: Relay[] }>('GET', relayPath);
-			relays = r.relays ?? [];
-		} catch {
-			relays = [];
-		}
-	}
-	async function addRelay() {
-		if (!newRelayUrl || !URL.canParse(newRelayUrl)) {
-			toast('Enter a valid URL.', 'err');
-			return;
-		}
-		relayBusy = true;
-		try {
-			await api('POST', relayPath, { label: newRelayLabel, url: newRelayUrl, token: newRelayToken });
-			newRelayLabel = '';
-			newRelayUrl = '';
-			newRelayToken = '';
-			toast('Relay added.', 'ok');
-			await loadRelays();
-		} catch (err) {
-			toast(errorMessage(err), 'err');
-		} finally {
-			relayBusy = false;
-		}
-	}
-	async function toggleRelay(relay: Relay) {
-		relayBusy = true;
-		try {
-			await api('PATCH', `${relayPath}/${encodeURIComponent(relay.id)}`, { enabled: !relay.enabled });
-			relay.enabled = !relay.enabled;
-			toast(relay.enabled ? 'Relay enabled.' : 'Relay disabled.', 'ok');
-		} catch (err) {
-			toast(errorMessage(err), 'err');
-		} finally {
-			relayBusy = false;
-		}
-	}
-	async function removeRelay(relay: Relay) {
-		if (!await confirmDialog(`Remove relay "${relay.label || relay.url}"?`)) return;
-		relayBusy = true;
-		try {
-			await api('DELETE', `${relayPath}/${encodeURIComponent(relay.id)}`);
-			relays = relays.filter((r) => r.id !== relay.id);
-			toast('Relay removed.', 'ok');
-		} catch (err) {
-			toast(errorMessage(err), 'err');
-		} finally {
-			relayBusy = false;
-		}
-	}
 	async function copyFeed(value: string, what: string) {
 		try {
 			await navigator.clipboard.writeText(value);
@@ -227,6 +170,84 @@
 	$effect(() => {
 		void loadRelays();
 	});
+
+	// What the game says about its feed (Season 2's GET /v1/feed, $lib/feed-report): read for those
+	// who may apply the config, once the document shows a Season 2 build, and again on request.
+	let report = $state<FeedReport | null>(null);
+	let reportAt = $state('');
+	let reportError = $state('');
+	/** the build does not serve the route */
+	let reportUnserved = $state(false);
+	let reportBusy = $state(false);
+	let reportAsked = false;
+	async function readReport() {
+		reportBusy = true;
+		try {
+			const next = await rconGet<FeedReport>(id, 'feed');
+			// The panel's verdict, read after the report and before it is shown: one read earlier
+			// (the page's first, or one from before the game restarted) has not seen the batches the
+			// report counts, and would make them look taken in under another server's token.
+			await loadFeed();
+			report = next;
+			reportAt = new Date().toISOString();
+			reportError = '';
+		} catch (err) {
+			if (err instanceof ApiError && err.code === 'no_route') reportUnserved = true;
+			else reportError = errorMessage(err);
+		} finally {
+			reportBusy = false;
+		}
+	}
+	$effect(() => {
+		if (admin && eventFeed && !reportAsked) {
+			reportAsked = true;
+			void readReport();
+		}
+	});
+	let diagnosis = $derived(report && feed ? feedDiagnosis(report, feed.url, feed.state) : null);
+	/** The fault in two lines: what is wrong, and what to do on the host. */
+	const FAULTS: Record<FeedFault, (d: FeedDiagnosis) => [string, string]> = {
+		off: () => [
+			'The server started without a feed.',
+			"bEventFeedEnabled=True was not in its file when it last started: add this panel's lines and restart the server."
+		],
+		empty: () => [
+			'The feed is on, but lists no endpoint.',
+			"Add this panel's EventFeedEndpoints line and restart the server."
+		],
+		elsewhere: (d) => [
+			`The server's file lists ${d.others} endpoint${d.others === 1 ? '' : 's'}, none of them this panel.`,
+			"Add this panel's line beside them (the game takes up to four) and restart the server."
+		],
+		path: (d) => [
+			'The Url does not end in /api/ingest/events.',
+			`The game posts to a page of this panel, which answers ${d.endpoint?.lastHttpStatus}: lines copied before 15 October 2026 named the site alone. Copy the line again, put it in place of the old one and restart the server.`
+		],
+		forbidden: () => [
+			'This panel refuses the posts (403).',
+			'Most often the Url has the wrong path: it must end in /api/ingest/events. Copy the line again, put it in place of the old one and restart the server.'
+		],
+		token: () => [
+			"The token in the server's file is not this server's.",
+			'Most often a line from before Replace token: only the newest token is taken. Copy the line again, put it in place of the old one and restart the server.'
+		],
+		panel: (d) => [
+			`This panel answers the game with an error (${d.endpoint?.lastHttpStatus}).`,
+			'Nothing to change on the host. If it lasts, tell whoever runs this panel.'
+		],
+		refused: (d) => [
+			`This panel refuses the posts (${d.endpoint?.lastHttpStatus}).`,
+			'Copy the line again, put it in place of the old one and restart the server.'
+		],
+		unreachable: () => [
+			'The game cannot reach this panel.',
+			"Its posts get no answer at all: check the Url's scheme and address against this panel's line."
+		],
+		otherToken: () => [
+			"The game's posts reach this panel, but not as this server.",
+			"They are taken in under another server's token, most likely a line copied from another server's card. Copy this server's line in place of it and restart the server."
+		]
+	};
 	let pinned = $derived(doc ? lockedKeys(doc.sections) : []);
 	let dirty = $derived(!!doc && text !== doc.text);
 
@@ -459,13 +480,31 @@
 	<div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
 		<span class="label-sm mb-0">Kill feed</span>
 		{#if feed}
-			{#if feed.configured}
+			<!-- $lib/feed-health: a token is not a feed; what came since the game started says whether it works. -->
+			{#if !feed.configured}
+				<span class="badge">off</span>
+			{:else if feed.state === 'silent'}
+				<span class="badge bg-warn/15 text-warn">silent</span>
+				<span class="text-[12.5px] text-mist-400"
+					>nothing since the server started {fmtAgo(feed.startedAt!)} · {feed.feedAt
+						? `last batch ${fmtTime(feed.feedAt)}`
+						: 'no batch received yet'}</span
+				>
+			{:else if feed.state === 'waiting'}
+				<span class="badge bg-info/15 text-info">waiting</span>
+				<span class="text-[12.5px] text-mist-400"
+					>the token is newer than the server's start: the game reads the lines when it next starts</span
+				>
+			{:else if feed.state === 'starting'}
+				<span class="badge">on</span>
+				<span class="text-[12.5px] text-mist-600"
+					>the server started {fmtAgo(feed.startedAt!)}: its first batch comes within a few minutes</span
+				>
+			{:else}
 				<span class="badge bg-ok/15 text-ok">on</span>
 				<span class="text-[12.5px] text-mist-600"
 					>{feed.feedAt ? `last batch ${feedAge(feed.feedAt)}` : 'no batch received yet'}</span
 				>
-			{:else}
-				<span class="badge">off</span>
 			{/if}
 		{/if}
 		{#if data.server.manager && feed}
@@ -485,6 +524,41 @@
 			</span>
 		{/if}
 	</div>
+	{#if feed?.configured && feed.state === 'silent' && eventFeed}
+		<div class="mb-3 rounded-ctl border border-warn/30 bg-warn/10 p-3 text-[13px]">
+			{#if diagnosis?.fault}
+				<!-- what the game's own report says is wrong ($lib/feed-report) -->
+				{@const [what, todo] = FAULTS[diagnosis.fault](diagnosis)}
+				<p class="font-semibold">{what}</p>
+				<p class="mt-1 text-mist-400">{todo}</p>
+				<p class="mt-1 text-mist-400">
+					The kill feed rules on the Automation tab cannot act until it is fixed.
+				</p>
+			{:else}
+				<p class="font-semibold">The game is not posting to Warcon.</p>
+				<p class="mt-1 text-mist-400">
+					The kill feed rules on the Automation tab cannot act until it does. On the host, check
+					that:
+				</p>
+				<ol class="mt-2 list-decimal space-y-1 pl-5">
+					<li>
+						the lines sit under <span class="chip">[{EVENT_FEED_SECTION}]</span> in
+						ServerSettings.ini, with
+						<span class="chip">bEventFeedEnabled=True</span>, not in a section of their own;
+					</li>
+					<li>
+						the Url ends in <span class="font-mono text-[12.5px]">/api/ingest/events</span>: lines
+						copied before 15 October 2026 named the site alone and never arrive;
+					</li>
+					<li>
+						the server has restarted since the lines went in: the game reads them only when it
+						starts;
+					</li>
+					<li>after Replace token, the new line took the old one's place.</li>
+				</ol>
+			{/if}
+		</div>
+	{/if}
 	{#if feed?.configured && feed.token && eventFeed}
 		<div class="flex items-start gap-2">
 			<pre
@@ -526,6 +600,59 @@
 			>
 		</div>
 	{/if}
+	{#if admin && eventFeed && (report || reportError || reportUnserved)}
+		<!-- The game's own report: every endpoint it posts to, by scheme and host only. -->
+		<div class="mt-3">
+			<div class="mb-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+				<span class="text-[13px] font-semibold">What the game reports</span>
+				<span class="text-[12.5px] text-mist-600">
+					{#if reportUnserved}this build does not report on its feed{:else if reportError}{reportError}{:else if report}{report.enabled
+							? 'switched on'
+							: 'switched off'} in the server's file · {report.endpointCount} endpoint{report.endpointCount ===
+						1
+							? ''
+							: 's'} · read {fmtAgo(reportAt)}{/if}
+				</span>
+				{#if !reportUnserved}
+					<button class="ml-auto btn btn-sm" disabled={reportBusy} onclick={readReport}
+						>Read again</button
+					>
+				{/if}
+			</div>
+			{#if report?.endpoints.length}
+				<div class="table-wrap">
+					<table>
+						<thead>
+							<tr
+								><th>#</th><th>Where</th><th>Healthy</th><th>Last answer</th><th class="num"
+									>Failures in a row</th
+								><th class="num">Sent</th><th class="num">Dropped</th><th>Last success</th></tr
+							>
+						</thead>
+						<tbody>
+							{#each report.endpoints as e, i (i)}
+								<tr>
+									<td class="text-mist-400">{e.index + 1}</td>
+									<td class="font-mono text-[12.5px] whitespace-nowrap"
+										>{e.scheme ? `${e.scheme} · ` : ''}{e.host || '—'}
+										{#if feed && isPanel(e, feed.url)}<span class="chip">this panel</span>{/if}</td
+									>
+									<td class={e.healthy ? 'text-ok' : 'text-warn'}>{e.healthy ? 'yes' : 'no'}</td>
+									<td class="font-mono text-[12.5px]">{e.lastHttpStatus ?? '—'}</td>
+									<td class="num">{fmtNum(e.consecutiveFailures)}</td>
+									<td class="num">{fmtNum(e.sentTotal)}</td>
+									<td class="num">{fmtNum(e.droppedTotal)}</td>
+									<td class="whitespace-nowrap text-mist-400"
+										>{e.lastSuccessAt ? fmtAgo(e.lastSuccessAt) : 'never'}</td
+									>
+								</tr>
+							{/each}
+						</tbody>
+					</table>
+				</div>
+			{/if}
+		</div>
+	{/if}
 	<p class="note">
 		{#if eventFeed}With <span class="chip">bEventFeedEnabled</span> on and an
 			<span class="chip">EventFeedEndpoints</span> entry for this panel in the server's file, the game{:else}With
@@ -538,53 +665,6 @@
 			restart (its scheduled one, or a manual restart).{:else if feed && !data.server.manager}An
 			owner of the organisation holds the token.{/if}
 	</p>
-	{#if data.server.manager}
-		<div class="mt-4 border-t border-mist-700/30 pt-4">
-			<span class="label-sm mb-2 block">Forward to additional endpoints</span>
-			{#if relays.length}
-				<div class="space-y-2">
-					{#each relays as relay (relay.id)}
-						<div class="flex flex-wrap items-center gap-2">
-							<label class="inline-flex items-center gap-2 text-[13px]"
-								><input type="checkbox" checked={relay.enabled} disabled={relayBusy} onchange={() => toggleRelay(relay)} />
-								<span class="font-mono text-mist-400">{relay.url}</span>
-									{#if relay.label}<span class="text-mist-500">— {relay.label}</span>{/if}
-							</label>
-							<button class="btn btn-xs btn-danger" disabled={relayBusy} onclick={() => removeRelay(relay)}>Remove</button>
-						</div>
-					{/each}
-				</div>
-			{:else}
-				<p class="text-[13px] text-mist-500">No relays yet.</p>
-			{/if}
-			<div class="mt-3 flex flex-wrap items-center gap-2">
-				<input
-						class="input text-[13px]"
-						placeholder="Label"
-						bind:value={newRelayLabel}
-						disabled={relayBusy}
-					/>
-				<input
-						class="input grow text-[13px]"
-						placeholder="URL (e.g. https://your-bridge.example/kills)"
-						bind:value={newRelayUrl}
-						disabled={relayBusy}
-					/>
-				<input
-						class="input text-[13px]"
-						placeholder="Bearer token (optional)"
-						bind:value={newRelayToken}
-						disabled={relayBusy}
-					/>
-				<button class="btn btn-sm" disabled={relayBusy} onclick={addRelay}>Add relay</button>
-			</div>
-			<p class="note mt-2">
-					Every incoming kill batch is fire-and-forget forwarded to enabled relays immediately. Use
-					<span class="chip">Org settings → JSON webhooks</span> if you need retries, signing, and
-					org-level routing instead.
-			</p>
-		</div>
-	{/if}
 </div>
 
 <div class="mt-4 panel">
