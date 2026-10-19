@@ -496,15 +496,25 @@
 					</SavedMessages>
 				</div>
 			{:else if kind === 'kick'}
-				<label class="sr-only" for="dialog-text">Reason</label>
-				<input
-					id="dialog-text"
-					class="input"
-					type="text"
-					placeholder="Reason (optional)…"
-					maxlength="200"
-					bind:value={text}
-				/>
+				<SavedMessages
+					server={row.s}
+					label="Reason"
+					labelFor="dialog-text"
+					inputId="dialog-text"
+					value={text}
+					onpick={(t) => (text = t)}
+					enabled={kickOn(row.s)}
+				>
+					<label class="sr-only" for="dialog-text">Reason</label>
+					<input
+						id="dialog-text"
+						class="input"
+						type="text"
+						placeholder="Reason (optional)…"
+						maxlength="200"
+						bind:value={text}
+					/>
+				</SavedMessages>
 			{:else}
 				<label class="sr-only" for="dialog-team">Faction</label>
 				<select id="dialog-team" class="input" bind:value={team} disabled={!destinations.length}>
