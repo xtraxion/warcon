@@ -352,11 +352,12 @@
 			<div class="mb-3 space-y-2.5">
 				{#each status.scores as f (f.name)}
 					{@const pct = Math.min(100, Math.max(0, Math.round((f.score / scoreScale) * 100)))}
+					{@const teamCount = teams.find(([name]) => name === f.name)?.[1] ?? 0}
 					<div>
 						<div class="mb-1 flex items-center justify-between text-[13px]">
 							<span class="inline-flex items-center gap-1.5 font-medium"
 								><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:{f.colorHex}"
-								></span>{f.name}</span
+								></span>{f.name}{#if teamCount > 0}<span class="text-mist-400">{teamCount}</span>{/if}</span
 							>
 							<span class="font-mono tabular">{fmtNum(f.score)}</span>
 						</div>
