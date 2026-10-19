@@ -27,7 +27,7 @@ const scoresOf = (v: unknown): Scores | null =>
 		? (v as Scores).map((f) => ({ name: f.name, score: Number(f.score) }))
 		: null;
 
-const summary = (m: typeof matches.$inferSelect, players: number): MatchSummary => ({
+const summary = (m: typeof matches.$inferSelect, players: number, hasData: boolean): MatchSummary => ({
 	id: m.id,
 	startedAt: m.startedAt.toISOString(),
 	endedAt: m.endedAt ? m.endedAt.toISOString() : null,
@@ -37,7 +37,8 @@ const summary = (m: typeof matches.$inferSelect, players: number): MatchSummary 
 	peakPlayers: m.peakPlayers,
 	players,
 	finalScores: scoresOf(m.finalScores),
-	winner: m.winner
+	winner: m.winner,
+	hasData
 });
 
 /** Matches a page of the panel's tab holds. */
@@ -76,7 +77,8 @@ export async function listMatches(
 		env.db
 			.select({
 				match: matches,
-				players: sql<string>`(SELECT COUNT(*) FROM match_players p WHERE p.match_id = ${matches.id})`
+				players: sql<string>`(SELECT COUNT(*) FROM match_players p WHERE p.match_id = ${matches.id})`,
+				hasData: sql<boolean>`EXISTS (SELECT 1 FROM match_players p WHERE p.match_id = ${matches.id} AND (p.kills > 0 OR p.deaths > 0 OR p.cash_delta > 0))`
 			})
 			.from(matches)
 			.where(eq(matches.serverId, serverId))
@@ -86,7 +88,7 @@ export async function listMatches(
 			.limit(pageSize)
 			.offset((page - 1) * pageSize)
 	]);
-	return { matches: rows.map((r) => summary(r.match, num(r.players))), total: num(count?.n) };
+	return { matches: rows.map((r) => summary(r.match, num(r.players), r.hasData)), total: num(count?.n) };
 }
 
 /** A page of matches as the list routes and loads answer it. */
@@ -186,7 +188,7 @@ export async function loadMatch(
 			...names.map((n) => s.find((f) => f.name === n)?.score ?? 0)
 		]);
 	}
-	const match = summary(m, lines.length);
+	const match = summary(m, lines.length, lines.length > 0);
 	return {
 		match,
 		factions,

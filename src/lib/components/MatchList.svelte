@@ -16,12 +16,14 @@
 		matches,
 		live = [],
 		hrefFor,
-		loading = false
+		loading = false,
+		ondelete
 	}: {
 		matches: MatchSummary[];
 		live?: LiveFaction[];
 		hrefFor: (m: MatchSummary) => string;
 		loading?: boolean;
+		ondelete?: (matchId: number) => void;
 	} = $props();
 	let now = $state(Date.now());
 	$effect(() => {
@@ -42,9 +44,8 @@
 	<table>
 		<thead>
 			<tr
-				><th>Started</th><th>Map</th><th class="num">Length</th><th>Result</th><th class="num"
-					>Players</th
-				></tr
+				><th>Started</th><th>Map</th><th class="num">Length</th><th>Result</th><th class="num">Players</th>
+				{#if ondelete}<th></th>{/if}</tr
 			>
 		</thead>
 		<tbody>
@@ -72,7 +73,8 @@
 							{#if liveScores}<span class="ml-2 text-[12.5px] whitespace-nowrap text-mist-600"
 									>{liveScores}</span
 								>{/if}
-						{:else if r.kind === 'abandoned'}<span class="text-mist-600">Abandoned</span>
+						{:else if r.kind === 'abandoned'}
+							<span class="text-mist-600">Abandoned</span>
 						{:else}
 							{#if m.winner}<span class="font-semibold" style="color:{colorOf(m.winner)}"
 									>{m.winner}</span
@@ -81,10 +83,19 @@
 						{/if}
 					</td>
 					<td class="num">{m.endedAt ? m.players || m.peakPlayers : m.peakPlayers}</td>
+					{#if ondelete}
+						<td class="text-right whitespace-nowrap">
+							<button
+								class="btn btn-sm btn-danger"
+								onclick={() => ondelete(m.id)}
+								>Delete</button
+							>
+						</td>
+					{/if}
 				</tr>
 			{:else}
 				<tr
-					><td colspan="5" class="py-6 text-center text-mist-600"
+					><td colspan={ondelete ? 6 : 5} class="py-6 text-center text-mist-600"
 						>{loading ? 'Loading…' : 'No matches recorded yet.'}</td
 					></tr
 				>

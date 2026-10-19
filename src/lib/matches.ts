@@ -17,6 +17,7 @@ export interface MatchSummary {
 	players: number;
 	finalScores: { name: string; score: number }[] | null;
 	winner: string | null;
+	hasData: boolean;
 }
 
 /** A player's line of the match, as the scoreboard shows it. */

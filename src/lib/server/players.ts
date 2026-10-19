@@ -375,6 +375,45 @@ export async function dossier(
 	const online = recent.find((s) => s.leftAt === null) ?? null;
 	const name = names[0]?.name || steamId;
 
+	// If the player is online and a match is in progress, add feed kills/deaths
+	// so the profile reflects the current match. These are from the kill feed (kills table)
+	// and are temporary — once the match ends and match_players is written, they
+	// come from there instead.
+	let liveMatchKills = 0;
+	let liveMatchDeaths = 0;
+	let liveMatchServerId: string | null = null;
+	if (online) {
+		const [liveMatch] = await db.execute<{ id: number; startedAt: Date }>(sql`
+			SELECT id, started_at AS "startedAt"
+			  FROM matches
+			 WHERE server_id = ${online.serverId} AND ended_at IS NULL
+			 ORDER BY started_at DESC LIMIT 1`);
+		if (liveMatch) {
+			const [liveStats] = await db.execute<{ kills: string; deaths: string }>(sql`
+				SELECT COUNT(*) FILTER (WHERE killer_steam_id = ${steamId} AND NOT suicide) AS kills,
+				       COUNT(*) FILTER (WHERE victim_steam_id = ${steamId}) AS deaths
+				  FROM kills
+				 WHERE server_id = ${online.serverId}
+				   AND ts >= ${liveMatch.startedAt}`);
+			liveMatchKills = num(liveStats?.kills);
+			liveMatchDeaths = num(liveStats?.deaths);
+			liveMatchServerId = online.serverId;
+			recordedAll.kills += liveMatchKills;
+			recordedAll.deaths += liveMatchDeaths;
+			const existing = recordedOn.get(online.serverId);
+			if (existing) {
+				existing.kills = String(num(existing.kills) + liveMatchKills);
+				existing.deaths = String(num(existing.deaths) + liveMatchDeaths);
+			} else {
+				recordedOn.set(online.serverId, {
+					serverId: online.serverId,
+					kills: String(liveMatchKills),
+					deaths: String(liveMatchDeaths)
+				});
+			}
+		}
+	}
+
 	const [
 		profiles,
 		local,

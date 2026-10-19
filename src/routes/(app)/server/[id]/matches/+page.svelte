@@ -15,7 +15,8 @@
 	let current = $state(parsePage(page.url.searchParams.get('page')));
 	let view = $state<MatchListView | null>(null);
 	let loading = $state(false);
-	let hideEmpty = $state(false);
+	type FilterMode = 'all' | 'hideEmpty' | 'showOnlyEmpty';
+	let filterMode = $state<FilterMode>('all');
 	let seq = 0;
 
 	async function load(p: number) {
@@ -43,13 +44,27 @@
 	});
 
 	function isEmpty(m: MatchListView['matches'][number]): boolean {
-		const r = resultLine(m);
-		if (r.kind === 'abandoned' || r.kind === 'draw') return true;
-		const players = m.endedAt ? m.players || m.peakPlayers : m.peakPlayers;
-		if (players < 20) return true;
-		return false;
+		return !m.hasData;
 	}
-	let filteredMatches = $derived(hideEmpty ? (view?.matches ?? []).filter((m) => !isEmpty(m)) : (view?.matches ?? []));
+	let filteredMatches = $derived(
+		filterMode === 'hideEmpty'
+			? (view?.matches ?? []).filter((m) => !isEmpty(m))
+			: filterMode === 'showOnlyEmpty'
+				? (view?.matches ?? []).filter((m) => isEmpty(m))
+				: (view?.matches ?? [])
+	);
+
+	async function deleteMatchRow(matchId: number) {
+		if (!confirm('Delete this match permanently? This cannot be undone.')) return;
+		try {
+			await api('DELETE', `/api/servers/${encodeURIComponent(id)}/matches/${matchId}`);
+			toast('Match deleted.', 'ok');
+			// Refresh current page
+			void load(current);
+		} catch (err) {
+			toast(errorMessage(err), 'err');
+		}
+	}
 </script>
 
 <div class="panel">
@@ -58,20 +73,27 @@
 			{#if view}{view.total} match{view.total === 1 ? '' : 'es'}{#if loading}
 					· loading…{/if}{:else}Loading…{/if}
 		</span>
-		<span class="ml-auto inline-flex items-center gap-1.5">
-			<input
-				id="hide-empty"
-				type="checkbox"
-				class="checkbox"
-				bind:checked={hideEmpty}
-			/>
-			<label for="hide-empty" class="cursor-pointer select-none">Hide empty</label>
+		<span class="ml-auto inline-flex items-center gap-2">
+			<button
+				class="btn btn-sm {filterMode === 'hideEmpty' ? 'btn-primary' : ''}"
+				onclick={() => (filterMode = filterMode === 'hideEmpty' ? 'all' : 'hideEmpty')}
+			>Hide empty</button
+			>
+			<button
+				class="btn btn-sm {filterMode === 'showOnlyEmpty' ? 'btn-primary' : ''}"
+				onclick={() => (filterMode = filterMode === 'showOnlyEmpty' ? 'all' : 'showOnlyEmpty')}
+			>Show only empty</button
+			>
 		</span>
 	</div>
-	{#if hideEmpty && filteredMatches.length < (view?.matches ?? []).length}
+	{#if filterMode !== 'all' && filteredMatches.length !== (view?.matches ?? []).length}
 		<p class="note">
-			Showing {filteredMatches.length} of {(view?.matches ?? []).length} matches on this page
-			(abandoned, draw, or &lt;20 players hidden).
+			{#if filterMode === 'hideEmpty'}
+				Showing {filteredMatches.length} of {(view?.matches ?? []).length} matches on this page
+				(no data hidden).
+			{:else}
+				Showing {filteredMatches.length} empty matches on this page.
+			{/if}
 		</p>
 	{/if}
 	<MatchList
@@ -79,6 +101,7 @@
 		live={view?.live ?? []}
 		{loading}
 		hrefFor={(m) => `/server/${encodeURIComponent(id)}/matches/${m.id}`}
+		ondelete={filterMode === 'showOnlyEmpty' ? deleteMatchRow : undefined}
 	/>
 	{#if view && view.pages > 1}
 		<div class="mt-3 flex items-center gap-2 text-[12.5px] text-mist-400">

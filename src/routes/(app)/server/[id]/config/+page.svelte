@@ -164,6 +164,75 @@
 		const s = Math.max(0, Math.round((Date.now() - Date.parse(iso)) / 1000));
 		return s < 90 ? `${s}s ago` : s < 5400 ? `${Math.round(s / 60)} min ago` : fmtTime(iso);
 	};
+
+	// ---- Kill feed relays ----
+	interface Relay {
+		id: string;
+		label: string;
+		url: string;
+		token: string;
+		enabled: boolean;
+		createdAt: string;
+	}
+	let relays = $state<Relay[]>([]);
+	let relayBusy = $state(false);
+	let relayPath = $derived(`/api/servers/${encodeURIComponent(id)}/feed/relay`);
+	let newRelayLabel = $state('');
+	let newRelayUrl = $state('');
+	let newRelayToken = $state('');
+	async function loadRelays() {
+		try {
+			const r = await api<{ relays: Relay[] }>('GET', relayPath);
+			relays = r.relays ?? [];
+		} catch {
+			relays = [];
+		}
+	}
+	async function addRelay() {
+		if (!newRelayUrl || !URL.canParse(newRelayUrl)) {
+			toast('Enter a valid URL.', 'err');
+			return;
+		}
+		relayBusy = true;
+		try {
+			await api('POST', relayPath, { label: newRelayLabel, url: newRelayUrl, token: newRelayToken });
+			newRelayLabel = '';
+			newRelayUrl = '';
+			newRelayToken = '';
+			toast('Relay added.', 'ok');
+			await loadRelays();
+		} catch (err) {
+			toast(errorMessage(err), 'err');
+		} finally {
+			relayBusy = false;
+		}
+	}
+	async function toggleRelay(relay: Relay) {
+		relayBusy = true;
+		try {
+			await api('PATCH', `${relayPath}/${encodeURIComponent(relay.id)}`, { enabled: !relay.enabled });
+			relay.enabled = !relay.enabled;
+			toast(relay.enabled ? 'Relay enabled.' : 'Relay disabled.', 'ok');
+		} catch (err) {
+			toast(errorMessage(err), 'err');
+		} finally {
+			relayBusy = false;
+		}
+	}
+	async function removeRelay(relay: Relay) {
+		if (!(await confirmDialog(`Remove relay "${relay.label || relay.url}"?`))) return;
+		relayBusy = true;
+		try {
+			await api('DELETE', `${relayPath}/${encodeURIComponent(relay.id)}`);
+			relays = relays.filter((r) => r.id !== relay.id);
+			toast('Relay removed.', 'ok');
+		} catch (err) {
+			toast(errorMessage(err), 'err');
+		} finally {
+			relayBusy = false;
+		}
+	}
+
 	$effect(() => {
 		void loadFeed();
 	});
@@ -651,6 +720,59 @@
 					</table>
 				</div>
 			{/if}
+		</div>
+	{/if}
+	{#if data.server.manager}
+		<div class="mt-4 border-t border-mist-700/30 pt-4">
+			<span class="label-sm mb-2 block">Forward to additional endpoints</span>
+			{#if relays.length}
+				<div class="space-y-2">
+					{#each relays as relay (relay.id)}
+						<div class="flex flex-wrap items-center gap-2">
+							<label class="inline-flex items-center gap-2 text-[13px]"
+								><input type="checkbox" checked={relay.enabled} disabled={relayBusy} onchange={() => toggleRelay(relay)} />{relay.label || relay.url}</label
+							>
+							<code class="truncate rounded-ctl border border-black bg-ink-950 px-2 py-1 font-mono text-[12px]"
+								>{relay.url}</code
+							>
+							{#if relay.token}
+								<code class="rounded-ctl border border-black bg-ink-950 px-2 py-1 font-mono text-[12px]"
+									>{relay.token.slice(0, 8)}…</code
+								>
+							{/if}
+							<button class="btn btn-sm btn-danger" disabled={relayBusy} onclick={() => removeRelay(relay)}>Remove</button>
+						</div>
+					{/each}
+				</div>
+			{:else}
+				<p class="text-[13px] text-mist-500">No relays yet.</p>
+			{/if}
+			<div class="mt-3 flex flex-wrap items-center gap-2">
+				<input
+						class="input text-[13px]"
+						placeholder="Label"
+						bind:value={newRelayLabel}
+						disabled={relayBusy}
+					/>
+				<input
+						class="input text-[13px] grow"
+						placeholder="https://…"
+						bind:value={newRelayUrl}
+						disabled={relayBusy}
+					/>
+				<input
+						class="input text-[13px]"
+						placeholder="Bearer token (optional)"
+						bind:value={newRelayToken}
+						disabled={relayBusy}
+					/>
+				<button class="btn btn-sm btn-primary" disabled={relayBusy} onclick={addRelay}>Add relay</button>
+			</div>
+			<p class="note mt-2">
+					Every incoming kill batch is fire-and-forget forwarded to enabled relays immediately. Use
+					<span class="chip">Org settings → JSON webhooks</span> if you need retries, signing, and
+					org-level routing instead.
+			</p>
 		</div>
 	{/if}
 	<p class="note">

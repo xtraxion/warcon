@@ -18,6 +18,64 @@ export interface PurgeCounts {
 	matchEvents: number;
 }
 
+/** Deletes a single match and everything recorded about it (kills, match players, match events).
+ *  Only an org owner may do this. */
+export async function deleteMatch(
+	env: Env,
+	req: Request,
+	actor: SessionUser,
+	server: ServerRow,
+	matchId: number
+): Promise<{ kills: number; matchPlayers: number; matchEvents: number }> {
+	const counts = await env.db.transaction(async (tx) => {
+		await lockTotals(tx, server.id);
+		// Find the game's matchId from match_events so we can delete those too
+		const [eventRow] = await tx.execute<{ match_id: string }>(sql`
+			SELECT DISTINCT match_id FROM match_events
+			WHERE server_id = ${server.id}
+			  AND match_id IS NOT NULL
+			  AND ts >= (SELECT started_at FROM matches WHERE id = ${matchId})
+			  AND ts <= (SELECT COALESCE(ended_at, started_at + interval '24 hours') FROM matches WHERE id = ${matchId})
+			LIMIT 1
+		`);
+		const gameMatchId = eventRow?.match_id ?? null;
+		const [killsRes] = await tx.execute<{ n: string }>(sql`
+			WITH d AS (DELETE FROM kills WHERE match_row = ${matchId} RETURNING 1)
+			SELECT COUNT(*) AS n FROM d
+		`);
+		const [playersRes] = await tx.execute<{ n: string }>(sql`
+			WITH d AS (DELETE FROM match_players WHERE match_id = ${matchId} RETURNING 1)
+			SELECT COUNT(*) AS n FROM d
+		`);
+		let eventsRes = { n: '0' };
+		if (gameMatchId) {
+			[eventsRes] = await tx.execute<{ n: string }>(sql`
+				WITH d AS (DELETE FROM match_events WHERE server_id = ${server.id} AND match_id = ${gameMatchId} RETURNING 1)
+				SELECT COUNT(*) AS n FROM d
+			`);
+		}
+		await tx.execute(sql`DELETE FROM matches WHERE id = ${matchId} AND server_id = ${server.id}`);
+		return {
+			kills: Number(killsRes?.n ?? 0),
+			matchPlayers: Number(playersRes?.n ?? 0),
+			matchEvents: Number(eventsRes?.n ?? 0)
+		};
+	});
+	forgetBoards(server.id);
+	await writeAudit(env, req, {
+		actor,
+		server: { id: server.id, name: server.name },
+		orgId: server.orgId,
+		category: 'server',
+		action: 'server.match.delete',
+		outcome: 'ok',
+		target: server.name,
+		detail: { matchId, ...counts },
+		message: `Match ${matchId} deleted: ${counts.kills} kills, ${counts.matchPlayers} match rows and ${counts.matchEvents} match events removed.`
+	});
+	return counts;
+}
+
 export async function purgeServerStats(
 	env: Env,
 	req: Request,
