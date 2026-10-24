@@ -558,7 +558,7 @@
 					target="_blank"
 					rel="noopener noreferrer"
 					class="btn btn-primary mt-2 inline-flex"
-				>Join</a>
+				>Join Server</a>
 			</div>
 		{/if}
 	</div>
