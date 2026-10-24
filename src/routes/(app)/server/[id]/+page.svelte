@@ -553,6 +553,12 @@
 						onerror={(e) => ((e.currentTarget as HTMLImageElement).hidden = true)}
 					/>
 				{/key}
+				<a
+					href="https://wardogserverlist.com/join?key=id%7Cb2e7977d-d02c-4b47-964d-a84378b6ec9c"
+					target="_blank"
+					rel="noopener noreferrer"
+					class="btn btn-primary mt-2 inline-flex"
+				>Join</a>
 			</div>
 		{/if}
 	</div>
