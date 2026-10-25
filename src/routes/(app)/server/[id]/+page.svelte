@@ -231,7 +231,10 @@
 	let teams = $derived.by(() => {
 		const m = new Map<string, number>();
 		for (const p of players) m.set(p.faction || '', (m.get(p.faction || '') || 0) + 1);
-		return [...m.entries()];
+		const entries = [...m.entries()];
+		const unassigned = entries.find(([f]) => f === '');
+		const rest = entries.filter(([f]) => f !== '');
+		return unassigned ? [unassigned, ...rest] : entries;
 	});
 	/** the scoreboard's own order, kills then fewest deaths, is what a header sort layers on */
 	const boardSort = new TableSort<Player>(
@@ -679,7 +682,15 @@
 			{#each teams as [f, n] (f)}
 				<button
 					class="btn btn-sm {teamFilter === (f || 'unassigned') ? 'btn-primary' : ''}"
-					onclick={() => (teamFilter = f || 'unassigned')}>{f || 'unassigned'} {n}</button
+					onclick={() => (teamFilter = f || 'unassigned')}
+				>
+					{#if !f}
+						<span
+							style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#fff;margin-right:4px;"
+						/>
+					{/if}
+					{f || 'unassigned'} {n}
+				</button
 				>
 			{/each}
 		</div>
