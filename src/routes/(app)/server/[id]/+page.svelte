@@ -230,7 +230,10 @@
 	);
 	let teams = $derived.by(() => {
 		const m = new Map<string, number>();
-		for (const p of players) m.set(p.faction || '', (m.get(p.faction || '') || 0) + 1);
+		for (const p of players) {
+			const faction = !p.faction || p.faction.toLowerCase() === 'white' ? '' : p.faction;
+			m.set(faction, (m.get(faction) || 0) + 1);
+		}
 		const entries = [...m.entries()];
 		const unassigned = entries.find(([f]) => f === '');
 		const rest = entries.filter(([f]) => f !== '');
