@@ -523,6 +523,17 @@
 					</button
 				>
 			</div>
+			{#if status?.map}
+				<div class="mt-3">
+					<MapArt
+						map={status.map}
+						lighting={selectedLighting || status.lighting}
+						variant="wide"
+						alt="{mapLabel(data.catalog, status.map)}, {lightingLabel(data.catalog, selectedLighting || status.lighting)}"
+						class="w-full rounded border border-black"
+					/>
+				</div>
+			{/if}
 		{/if}
 		<form
 			class="mt-4"
