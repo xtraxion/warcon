@@ -236,6 +236,7 @@
 		const rest = entries.filter(([f]) => f !== '');
 		return unassigned ? [unassigned, ...rest] : entries;
 	});
+	let unassignedCount = $derived(teams.find(([name]) => name === '')?.[1] ?? 0);
 	/** the scoreboard's own order, kills then fewest deaths, is what a header sort layers on */
 	const boardSort = new TableSort<Player>(
 		{
@@ -371,6 +372,17 @@
 						</div>
 					</div>
 				{/each}
+				{#if unassignedCount > 0}
+					<div>
+						<div class="mb-1 flex items-center justify-between text-[13px]">
+							<span class="inline-flex items-center gap-1.5 font-medium"
+								><span class="inline-block h-2.5 w-2.5 rounded-full" style="background:#fff"
+								></span>unassigned<span class="text-mist-400">{unassignedCount}</span></span
+							>
+							<span class="font-mono tabular">—</span>
+						</div>
+					</div>
+				{/if}
 			</div>
 			{#if phase}
 				<div class="kv">
