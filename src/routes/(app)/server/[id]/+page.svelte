@@ -46,8 +46,6 @@
 	let now = $state(Date.now());
 	let showPicker = $state(false);
 	let broadcast = $state('');
-	/** selected lighting for manual weather change */
-	let selectedLighting = $state('');
 	/** who the message goes to: '' is everyone (a broadcast), else a faction (a whisper to each on it) */
 	let to = $state('');
 	let sending = $state(false);
@@ -399,34 +397,10 @@
 				>
 			</div>
 			<div class="kv">
-				<span class="text-mist-400">Time of day &amp; weather</span>
-				<div class="flex items-center gap-2">
-					{#if match}
-						<select class="input" bind:value={selectedLighting}>
-							<option value="">—</option>
-							{#each data.catalog.lightings as l}
-								<option value={l.id}>{l.display || l.id}</option>
-							{/each}
-						</select>
-						<button
-							class="btn"
-							disabled={!selectedLighting}
-							onclick={async () => {
-								try {
-									await rconPost(id, 'setWeather', { lighting: selectedLighting });
-									toast('Wetter geändert');
-								} catch (e) {
-									toast(errorMessage(e));
-								}
-							}}
-							>
-									Ändern
-							</button
-							>
-						{/if}
-						<span>{lightingLabel(data.catalog, status.lighting)}</span>
-					</div>
-				</div>
+				<span class="text-mist-400">Time of day &amp; weather</span><span
+					>{lightingLabel(data.catalog, status.lighting)}</span
+				>
+			</div>
 			<div class="kv">
 				<span class="text-mist-400">Control zone</span><span>{zoneLabel(status.alternator)}</span>
 			</div>
