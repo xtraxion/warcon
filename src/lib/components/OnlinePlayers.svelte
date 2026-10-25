@@ -50,6 +50,7 @@
 		several = false,
 		search = $bindable(''),
 		only = '',
+		tagFilter = '',
 		onrefresh,
 		onacted,
 		filters
@@ -61,6 +62,8 @@
 		search?: string;
 		/** show one server's players alone (a filter like the box: whoever is ticked stays ticked) */
 		only?: string;
+		/** if set, only players whose name contains this tag are shown */
+		tagFilter?: string;
 		/** the Refresh button: read the marks and lists again */
 		onrefresh: () => unknown;
 		/** after an action on a server: read again what the page holds of it */
@@ -113,6 +116,7 @@
 			all.filter(
 				(r) =>
 					(!only || r.s.id === only) &&
+					(!tagFilter || r.p.name.toLowerCase().includes(tagFilter.toLowerCase())) &&
 					matches(
 						search,
 						r.p.name,

@@ -23,6 +23,8 @@
 	let all = $state<Player[]>([]);
 	let status = $state<Status | null>(null);
 	let search = $state('');
+	/** filter online players to those with 2MG in their name */
+	let show2MGOnly = $state(false);
 	/** keep the filter across a trip to a dossier and back */
 	export const snapshot: Snapshot<string> = {
 		capture: () => search,
@@ -151,9 +153,18 @@
 		<OnlinePlayers
 			servers={roster}
 			bind:search
+			tagFilter={show2MGOnly ? '2mg' : ''}
 			onrefresh={refreshPlayers}
 			onacted={refreshPlayers}
-		/>
+		>
+			{#snippet filters()}
+				<button
+					class="btn {show2MGOnly ? 'btn-primary' : ''}"
+					onclick={() => (show2MGOnly = !show2MGOnly)}
+				>2MG</button
+				>
+			{/snippet}
+		</OnlinePlayers>
 		<p class="note">
 			{#if listState?.canEditOrgBans || listState?.canEditOrgSlots}Everyone who has ever joined is
 				under
