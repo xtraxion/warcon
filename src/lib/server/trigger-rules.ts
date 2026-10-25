@@ -8,11 +8,13 @@ import { validateKillRate, type KillRateConfig } from './kill-rate';
 import { validateKillDistance, type KillDistanceConfig } from './kill-distance';
 import { validateTwoTeams, type TwoTeamsConfig } from './two-teams';
 import { validateAfkProtection, type AfkProtectionConfig } from './afk-protection';
+import { validateAfkWatch, type AfkWatchConfig } from './afk-watch';
 import { validateNameChange, type NameChangeConfig } from './name-change';
 import { validateBounty, type BountyConfig } from './bounty';
 import { validateRotationShuffle, type RotationShuffleConfig } from './rotation-shuffle';
 import { validateLiveName } from './live-name';
 import { validateRestartSkip, type RestartSkipConfig } from './restart-skip';
+import { validateWeatherCycle, type WeatherCycleConfig } from './weather-cycle';
 import { steamIdList } from './steam';
 import type { LiveNameConfig } from '$lib/live-name';
 import { causeTags } from './cause-tags';
@@ -44,7 +46,9 @@ export const TRIGGER_KINDS: TriggerKind[] = [
 	'bounty',
 	'rotation_shuffle',
 	'live_name',
-	'restart_skip'
+	'restart_skip',
+	'afk_watch',
+	'weather_cycle'
 ];
 export const TRIGGER_LABELS: Record<TriggerKind, string> = {
 	welcome: 'Welcome whisper',
@@ -66,7 +70,9 @@ export const TRIGGER_LABELS: Record<TriggerKind, string> = {
 	bounty: 'Bounty',
 	rotation_shuffle: 'Rotation shuffle',
 	live_name: 'Live server name',
-	restart_skip: 'Skip map after restart'
+	restart_skip: 'Skip map after restart',
+	afk_watch: 'AFK watch',
+	weather_cycle: 'Weather cycle'
 };
 
 export interface WelcomeConfig {
@@ -237,7 +243,9 @@ export type TriggerConfig =
 	| BountyConfig
 	| RotationShuffleConfig
 	| LiveNameConfig
-	| RestartSkipConfig;
+	| RestartSkipConfig
+	| AfkWatchConfig
+	| WeatherCycleConfig;
 
 /** A kick reason: not chat, so not held to the game's chat cap. */
 export const MAX_REASON = 200;
@@ -442,6 +450,10 @@ export function validateConfig(kind: TriggerKind, raw: unknown): TriggerConfig {
 			return validateLiveName(c);
 		case 'restart_skip':
 			return validateRestartSkip();
+		case 'afk_watch':
+			return validateAfkWatch(c);
+		case 'weather_cycle':
+			return validateWeatherCycle(c);
 	}
 }
 
