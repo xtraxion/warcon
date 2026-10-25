@@ -564,38 +564,6 @@
 	</div>
 </div>
 
-<div class="mt-4 panel">
-	<div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
-		<span class="label-sm mb-0">Cash in play</span>
-		<span class="text-[12px] text-mist-600"
-			>held by connected players this match · one point per observation</span
-		>
-		<span class="join">
-			<button class="btn btn-sm {cashWindow === 'match' ? 'btn-primary' : ''}" onclick={() => (cashWindow = 'match')}>Match</button>
-			<button class="btn btn-sm {cashWindow === '30m' ? 'btn-primary' : ''}" onclick={() => (cashWindow = '30m')}>30m</button>
-			<button class="btn btn-sm {cashWindow === '15m' ? 'btn-primary' : ''}" onclick={() => (cashWindow = '15m')}>15m</button>
-			<button class="btn btn-sm {cashWindow === '5m' ? 'btn-primary' : ''}" onclick={() => (cashWindow = '5m')}>5m</button>
-			<button class="btn btn-sm {cashWindow === '2m' ? 'btn-primary' : ''}" onclick={() => (cashWindow = '2m')}>2m</button>
-		</span>
-		<span class="join ml-auto">
-			<button
-				class="btn btn-sm {cashView === 'chart' ? 'btn-primary' : ''}"
-				onclick={() => (cashView = 'chart')}>Chart</button
-			>
-			<button
-				class="btn btn-sm {cashView === 'table' ? 'btn-primary' : ''}"
-				onclick={() => (cashView = 'table')}>Table</button
-			>
-		</span>
-	</div>
-	<CashChart
-		points={filteredCash}
-		view={cashView}
-		color={(name) => factionColor(name, status?.scores)}
-		emptyText="No cash samples yet. Points appear as the scoreboard refreshes."
-	/>
-</div>
-
 <div class="mt-4 panel" hidden={!showPicker}>
 	<span class="label-sm">Map override</span>
 	<MapPicker bind:this={picker} serverId={id} catalog={data.catalog} disabled={!match} />
@@ -627,6 +595,38 @@
 		is added to the rotation if it is not there). Save rotation on the Map rotation tab makes that
 		survive a restart.
 	</p>
+</div>
+
+<div class="mt-4 panel">
+	<div class="mb-3 flex flex-wrap items-center gap-x-3 gap-y-2">
+		<span class="label-sm mb-0">Cash in play</span>
+		<span class="text-[12px] text-mist-600"
+			>held by connected players this match · one point per observation</span
+		>
+		<span class="join">
+			<button class="btn btn-sm {cashWindow === 'match' ? 'btn-primary' : ''}" onclick={() => (cashWindow = 'match')}>Match</button>
+			<button class="btn btn-sm {cashWindow === '30m' ? 'btn-primary' : ''}" onclick={() => (cashWindow = '30m')}>30m</button>
+			<button class="btn btn-sm {cashWindow === '15m' ? 'btn-primary' : ''}" onclick={() => (cashWindow = '15m')}>15m</button>
+			<button class="btn btn-sm {cashWindow === '5m' ? 'btn-primary' : ''}" onclick={() => (cashWindow = '5m')}>5m</button>
+			<button class="btn btn-sm {cashWindow === '2m' ? 'btn-primary' : ''}" onclick={() => (cashWindow = '2m')}>2m</button>
+		</span>
+		<span class="join ml-auto">
+			<button
+				class="btn btn-sm {cashView === 'chart' ? 'btn-primary' : ''}"
+				onclick={() => (cashView = 'chart')}>Chart</button
+			>
+			<button
+				class="btn btn-sm {cashView === 'table' ? 'btn-primary' : ''}"
+				onclick={() => (cashView = 'table')}>Table</button
+			>
+		</span>
+	</div>
+	<CashChart
+		points={filteredCash}
+		view={cashView}
+		color={(name) => factionColor(name, status?.scores)}
+		emptyText="No cash samples yet. Points appear as the scoreboard refreshes."
+	/>
 </div>
 
 <div class="mt-4 panel">
