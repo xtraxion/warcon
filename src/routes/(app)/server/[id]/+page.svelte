@@ -46,6 +46,8 @@
 	let now = $state(Date.now());
 	let showPicker = $state(false);
 	let broadcast = $state('');
+	/** selected lighting for manual weather change */
+	let selectedLighting = $state('');
 	/** who the message goes to: '' is everyone (a broadcast), else a faction (a whisper to each on it) */
 	let to = $state('');
 	let sending = $state(false);
@@ -496,6 +498,32 @@
 				? 'Both travel when the match-end screen finishes, not when the button is pressed.'
 				: 'You have view-only access to this server.'}
 		</p>
+		{#if match}
+			<div class="mt-4 flex items-center gap-2">
+				<span class="text-mist-400">Weather</span>
+				<select class="input" bind:value={selectedLighting}>
+					<option value="">—</option>
+					{#each data.catalog.lightings as l}
+						<option value={l.id}>{l.display || l.id}</option>
+					{/each}
+				</select>
+				<button
+					class="btn"
+					disabled={!selectedLighting}
+					onclick={async () => {
+						try {
+							await rconPost(id, 'setWeather', { lighting: selectedLighting });
+							toast('Wetter geändert');
+						} catch (e) {
+							toast(errorMessage(e));
+						}
+					}}
+				>
+						Ändern
+					</button
+				>
+			</div>
+		{/if}
 		<form
 			class="mt-4"
 			onsubmit={(e) => {
