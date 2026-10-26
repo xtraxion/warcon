@@ -24,7 +24,7 @@
 	import type { CashPoint } from '$lib/server/analytics';
 	import SortHeader from '$lib/components/SortHeader.svelte';
 	import { TableSort } from '$lib/table.svelte';
-	import type { KillView, LiveView, Player, Rotation, Status } from '$lib/types';
+	import type { KillView, LiveView, Player, Rotation, Status, TriggerView } from '$lib/types';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -64,6 +64,25 @@
 			.map((id) => data.catalog.lightings.find((l) => l.id === id))
 			.filter((l) => !!l)
 	);
+	let triggers = $state<TriggerView[]>([]);
+	let weatherCycleTrigger = $derived(
+		triggers.find((t) => t.kind === 'weather_cycle' && t.enabled)
+	);
+	let weatherCycleCountdown = $derived.by(() => {
+		if (!weatherCycleTrigger?.lastFiredAt) return null;
+		const cfg = weatherCycleTrigger.config as Record<string, unknown>;
+		const everyMinutes = typeof cfg.everyMinutes === 'number' ? cfg.everyMinutes : 30;
+		const everyMs = everyMinutes * 60_000;
+		const lastFired = new Date(weatherCycleTrigger.lastFiredAt).getTime();
+		const nextAt = lastFired + everyMs;
+		const remainingS = Math.max(0, Math.ceil((nextAt - now) / 1000));
+		const m = Math.floor(remainingS / 60);
+		const s = remainingS % 60;
+		return {
+			remaining: `${m}:${s.toString().padStart(2, '0')}`,
+			nextTime: new Date(nextAt).toLocaleTimeString(undefined, { hour12: false })
+		};
+	});
 	/** who the message goes to: '' is everyone (a broadcast), else a faction (a whisper to each on it) */
 	let to = $state('');
 	let sending = $state(false);
@@ -223,16 +242,28 @@
 	/** After a command: the worker looks again on its own; the rotation is ours to re-read. */
 	const refreshStatus = refreshRotation;
 
+	async function loadTriggers() {
+		try {
+			const res = await api<{ triggers: TriggerView[] }>('GET', `/api/servers/${id}/triggers`);
+			triggers = res.triggers;
+		} catch {
+			/* silently fail */
+		}
+	}
+
 	$effect(() => {
 		const stops = [
 			watchLive([id], onLive, undefined, onKills),
 			poll(refreshRotation, 30000),
 			poll(loadKills, 60000)
 		];
+		void loadTriggers(); // initial load
+		const triggerPoll = setInterval(loadTriggers, 30000);
 		const t = setInterval(() => (now = Date.now()), 1000);
 		return () => {
 			stops.forEach((s) => s());
 			clearInterval(t);
+			clearInterval(triggerPoll);
 		};
 	});
 
@@ -437,6 +468,13 @@
 					>{lightingLabel(data.catalog, status.lighting)}</span
 				>
 			</div>
+			{#if weatherCycleCountdown !== null}
+				<div class="kv">
+					<span class="text-mist-400">Next weather change</span><span
+						>{weatherCycleCountdown.remaining} ({weatherCycleCountdown.nextTime})</span
+					>
+				</div>
+			{/if}
 			<div class="kv">
 				<span class="text-mist-400">Control zone</span><span>{zoneLabel(status.alternator)}</span>
 			</div>
