@@ -48,6 +48,22 @@
 	let broadcast = $state('');
 	/** selected lighting for manual weather change */
 	let selectedLighting = $state('');
+	/** ordered lighting presets for the weather dropdown */
+	let lightingOrder = $derived(
+		[
+			'DayStartClear',
+			'DayEarlyFog',
+			'DayEarlyClear',
+			'DayClear',
+			'DayLateClear',
+			'DayEndClear',
+			'DayLateGray',
+			'DayLateGrayFog',
+			'DayLateRain'
+		]
+			.map((id) => data.catalog.lightings.find((l) => l.id === id))
+			.filter((l) => !!l)
+	);
 	/** who the message goes to: '' is everyone (a broadcast), else a faction (a whisper to each on it) */
 	let to = $state('');
 	let sending = $state(false);
@@ -521,7 +537,7 @@
 				<span class="text-mist-400">Weather</span>
 				<select class="input" bind:value={selectedLighting}>
 					<option value="">—</option>
-					{#each data.catalog.lightings as l}
+					{#each lightingOrder as l}
 						<option value={l.id}>{l.display || l.id}</option>
 					{/each}
 				</select>
