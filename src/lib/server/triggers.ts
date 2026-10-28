@@ -1290,6 +1290,7 @@ async function evalPingKick(
 	read: StatsReader
 ) {
 	if (!ctx.playersObserved) return;
+	if (ctx.status.playerCount < cfg.minPlayers) return;
 	const previous = row.state as PingKickState | null;
 	// A rule that spares reserved slots leaves their holders out, as if they were not on, so a
 	// streak they had ends. Until the worker has read the reserved list it cannot tell who they

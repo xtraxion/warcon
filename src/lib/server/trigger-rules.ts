@@ -127,6 +127,8 @@ export interface PingKickConfig {
 	/** never kick a player with a reserved slot; rules saved before it existed have none and spare
 	 *  nobody */
 	spareReserved?: boolean;
+	/** kicks only while at least this many are on */
+	minPlayers: number;
 	reason: string;
 }
 
@@ -349,12 +351,14 @@ export function validateConfig(kind: TriggerKind, raw: unknown): TriggerConfig {
 		case 'ping_kick': {
 			const maxPingMs = int(c.maxPingMs, 200, 0, 2000);
 			const durationSeconds = int(c.durationSeconds, 60, 0, 3600);
+			const minPlayers = int(c.minPlayers, 1, 0, 1000);
 			if (!maxPingMs) throw new ApiError(400, 'Set a ping limit from 1 to 2000 ms.');
 			if (!durationSeconds) throw new ApiError(400, 'Set a duration from 1 to 3600 seconds.');
 			return {
 				maxPingMs,
 				durationSeconds,
 				spareReserved: !!c.spareReserved,
+				minPlayers,
 				reason: str(c.reason, MAX_REASON) || 'Ping too high for too long.'
 			};
 		}

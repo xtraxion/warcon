@@ -910,6 +910,7 @@
 					maxPingMs: Number(f.maxPingMs),
 					durationSeconds: Number(f.durationSeconds),
 					spareReserved: f.spareReserved,
+					minPlayers: Number(f.minPlayers),
 					reason: f.reason
 				};
 			case 'afk_watch':
@@ -1167,7 +1168,7 @@
 					.filter(Boolean)
 					.join(' · ');
 			case 'ping_kick':
-				return `ping over ${c.maxPingMs} ms for ${c.durationSeconds} s${c.spareReserved ? ' · spares reserved slots' : ''}`;
+				return `ping over ${c.maxPingMs} ms for ${c.durationSeconds} s${c.spareReserved ? ' · spares reserved slots' : ''}${c.minPlayers && c.minPlayers > 1 ? ` · ${c.minPlayers}+ on` : ''}`;
 			case 'afk_watch': {
 				const exempt = ((c.exempt as string[] | undefined) ?? []).length;
 				const spares = [
@@ -2519,6 +2520,22 @@
 								required
 							/>
 							seconds
+						</div>
+					</fieldset>
+					<fieldset class="space-y-1.5 text-[13px]">
+						<legend class="field-label">Only when</legend>
+						<div class="flex flex-wrap items-center gap-2">
+							at least
+							<input
+								class="input w-20 text-right"
+								type="number"
+								min="0"
+								max="1000"
+								bind:value={f.minPlayers}
+								aria-label="Minimum players"
+								required
+							/>
+							players on
 						</div>
 					</fieldset>
 					<fieldset class="space-y-1.5 text-[13px]">
