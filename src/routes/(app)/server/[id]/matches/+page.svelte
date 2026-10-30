@@ -65,6 +65,17 @@
 			toast(errorMessage(err), 'err');
 		}
 	}
+
+	async function deleteMatchesWithZeroPlayers() {
+		if (!confirm('Delete all matches with 0 players? This cannot be undone.')) return;
+		try {
+			const r = await api<{ deleted: number }>('DELETE', `/api/servers/${encodeURIComponent(id)}/matches`);
+			toast(`${r.deleted} match${r.deleted === 1 ? '' : 'es'} with 0 players deleted.`, 'ok');
+			void load(current);
+		} catch (err) {
+			toast(errorMessage(err), 'err');
+		}
+	}
 </script>
 
 <div class="panel">
@@ -83,6 +94,9 @@
 				class="btn btn-sm {filterMode === 'showOnlyEmpty' ? 'btn-primary' : ''}"
 				onclick={() => (filterMode = filterMode === 'showOnlyEmpty' ? 'all' : 'showOnlyEmpty')}
 			>Show only empty</button
+			>
+			<button class="btn btn-sm btn-danger" onclick={deleteMatchesWithZeroPlayers}
+				>Delete 0-player</button
 			>
 		</span>
 	</div>

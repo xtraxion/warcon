@@ -76,6 +76,79 @@ export async function deleteMatch(
 	return counts;
 }
 
+/** Deletes all ended matches with peakPlayers === 0 for a server.
+ *  Only an org owner may do this. */
+export async function deleteMatchesWithZeroPlayers(
+	env: Env,
+	req: Request,
+	actor: SessionUser,
+	server: ServerRow
+): Promise<{ deleted: number; kills: number; matchPlayers: number; matchEvents: number }> {
+	const result = await env.db.transaction(async (tx) => {
+		await lockTotals(tx, server.id);
+		const matchRows = await tx.execute<{ id: number; started_at: Date; ended_at: Date | null }>(sql`
+			SELECT id, started_at, ended_at FROM matches
+			WHERE server_id = ${server.id} AND peak_players = 0 AND ended_at IS NOT NULL
+			ORDER BY id
+		`);
+		let totalKills = 0;
+		let totalPlayers = 0;
+		let totalEvents = 0;
+		for (const row of matchRows) {
+			const matchId = row.id;
+			const [eventRow] = await tx.execute<{ match_id: string }>(sql`
+				SELECT DISTINCT match_id FROM match_events
+				WHERE server_id = ${server.id}
+				  AND match_id IS NOT NULL
+				  AND ts >= (SELECT started_at FROM matches WHERE id = ${matchId})
+				  AND ts <= (SELECT COALESCE(ended_at, started_at + interval '24 hours') FROM matches WHERE id = ${matchId})
+				LIMIT 1
+			`);
+			const gameMatchId = eventRow?.match_id ?? null;
+			const [killsRes] = await tx.execute<{ n: string }>(sql`
+				WITH d AS (DELETE FROM kills WHERE match_row = ${matchId} RETURNING 1)
+				SELECT COUNT(*) AS n FROM d
+			`);
+			const [playersRes] = await tx.execute<{ n: string }>(sql`
+				WITH d AS (DELETE FROM match_players WHERE match_id = ${matchId} RETURNING 1)
+				SELECT COUNT(*) AS n FROM d
+			`);
+			let eventsRes = { n: '0' };
+			if (gameMatchId) {
+				[eventsRes] = await tx.execute<{ n: string }>(sql`
+					WITH d AS (DELETE FROM match_events WHERE server_id = ${server.id} AND match_id = ${gameMatchId} RETURNING 1)
+					SELECT COUNT(*) AS n FROM d
+				`);
+			}
+			await tx.execute(sql`DELETE FROM matches WHERE id = ${matchId} AND server_id = ${server.id}`);
+			totalKills += Number(killsRes?.n ?? 0);
+			totalPlayers += Number(playersRes?.n ?? 0);
+			totalEvents += Number(eventsRes?.n ?? 0);
+		}
+		return {
+			deleted: matchRows.length,
+			kills: totalKills,
+			matchPlayers: totalPlayers,
+			matchEvents: totalEvents
+		};
+	});
+	if (result.deleted > 0) {
+		forgetBoards(server.id);
+		await writeAudit(env, req, {
+			actor,
+			server: { id: server.id, name: server.name },
+			orgId: server.orgId,
+			category: 'server',
+			action: 'server.matches.delete-zero-players',
+			outcome: 'ok',
+			target: server.name,
+			detail: result,
+			message: `${result.deleted} matches with zero players deleted: ${result.kills} kills, ${result.matchPlayers} match rows and ${result.matchEvents} match events removed.`
+		});
+	}
+	return result;
+}
+
 export async function purgeServerStats(
 	env: Env,
 	req: Request,
