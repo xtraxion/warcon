@@ -25,7 +25,6 @@ import {
 	playerTotals,
 	serverBans,
 	servers,
-	steamFriends,
 	triggers
 } from './db/schema';
 import { getProfiles, isSteamId, steamEnabled, type SteamProfileRow } from './steam';
@@ -290,29 +289,8 @@ export async function marksFor(
 	const records = new Map(
 		totals.map((t) => [t.steamId, { kills: num(t.kills), deaths: num(t.deaths) }])
 	);
-	// For friend intersections: which other online players are in each player's friend list
-	const onlineIds = players.map((p) => p.steamId);
-	const friendRows = onlineIds.length
-		? await env.db.execute<{ steamId: string; friendSteamId: string }>(sql`
-			SELECT steam_id AS steamId, friend_steam_id AS friendSteamId
-			  FROM steam_friends
-			 WHERE steam_id IN ${onlineIds}
-			   AND friend_steam_id IN ${onlineIds}
-		`)
-		: [];
-	const friendsMap = new Map<string, string[]>();
-	for (const r of friendRows) {
-		const list = friendsMap.get(r.steamId) ?? [];
-		list.push(r.friendSteamId);
-		friendsMap.set(r.steamId, list);
-	}
-	// Build reverse lookup: steamId -> name
-	const nameById = new Map(players.map((p) => [p.steamId, p.name]));
-
-	return ids.map((steamId) => {
+		return ids.map((steamId) => {
 		const l = local.get(steamId);
-		const friendSteamIds = friendsMap.get(steamId) ?? [];
-		const friendNames = friendSteamIds.map((id) => nameById.get(id)).filter(Boolean) as string[];
 		return {
 			steamId,
 			watched: !!l?.watched,
@@ -321,8 +299,7 @@ export async function marksFor(
 			risk: riskFor(env, profiles.get(steamId), l, performance.get(steamId), staff),
 			steamName: profiles.get(steamId)?.persona || null,
 			record: records.get(steamId) ?? null,
-			sessions: visits.get(steamId) ?? 0,
-			friendsOnline: friendNames
+			sessions: visits.get(steamId) ?? 0
 		};
 	});
 }

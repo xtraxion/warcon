@@ -3,7 +3,7 @@
 import { eq, inArray, sql } from 'drizzle-orm';
 import type { Env } from './env';
 import { ApiError, forLog, str } from './http';
-import { steamProfiles, steamFriends, type SteamProfileRow } from './db/schema';
+import { steamProfiles, type SteamProfileRow } from './db/schema';
 
 export type { SteamProfileRow };
 
@@ -112,19 +112,19 @@ interface FriendEvidence {
 }
 
 /** A private friends list is a documented 401, not a broken Steam key. Other failures are unknown. */
-async function friendEvidence(key: string, steamId: string): Promise<{ evidence: FriendEvidence; friendIds: string[] }> {
+async function friendEvidence(key: string, steamId: string): Promise<FriendEvidence> {
 	const unknown: FriendEvidence = { state: 'unknown', total: 0, checked: 0, banned: 0 };
-	if (Date.now() < backoffUntil) return { evidence: unknown, friendIds: [] };
+	if (Date.now() < backoffUntil) return unknown;
 	try {
 		const url = `https://api.steampowered.com/ISteamUser/GetFriendList/v1/?key=${encodeURIComponent(key)}&steamid=${steamId}&relationship=friend`;
 		const response = await fetch(url, { signal: AbortSignal.timeout(5000) });
-		if (response.status === 401) return { evidence: { ...unknown, state: 'private' }, friendIds: [] };
+		if (response.status === 401) return { ...unknown, state: 'private' };
 		if (response.status === 429 || response.status >= 500) backoffUntil = Date.now() + BACKOFF_MS;
-		if (!response.ok) return { evidence: unknown, friendIds: [] };
+		if (!response.ok) return unknown;
 		const body = (await response.json()) as {
 			friendslist?: { friends?: { steamid: string }[] };
 		};
-		if (!body.friendslist) return { evidence: unknown, friendIds: [] };
+		if (!body.friendslist) return unknown;
 		const friends = [
 			...new Set((body.friendslist.friends ?? []).map((f) => f.steamid).filter(isSteamId))
 		];
@@ -140,15 +140,14 @@ async function friendEvidence(key: string, steamId: string): Promise<{ evidence:
 				(p) => (p.NumberOfVACBans ?? 0) > 0 || (p.NumberOfGameBans ?? 0) > 0
 			).length;
 		}
-		const evidence: FriendEvidence = {
+		return {
 			state: sample.length < friends.length ? 'partial' : 'public',
 			total: friends.length,
 			checked: sample.length,
 			banned
 		};
-		return { evidence, friendIds: friends };
 	} catch {
-		return { evidence: unknown, friendIds: [] };
+		return unknown;
 	}
 }
 
@@ -171,23 +170,7 @@ async function refreshFriendEvidence(
 				try {
 					// Out of budget: left as it is, without a write, for a later day.
 					if (!friendBudget(1 + FRIEND_LIMIT / CHUNK)) continue;
-					const { evidence, friendIds } = await friendEvidence(env.STEAM_API_KEY!, row.steamId);
-					// Store friend list for intersection queries
-					if (friendIds.length > 0) {
-						await env.db.delete(steamFriends).where(eq(steamFriends.steamId, row.steamId));
-						if (friendIds.length > 0) {
-							const now = new Date();
-							const chunks = [];
-							for (let j = 0; j < friendIds.length; j += CHUNK) {
-								chunks.push(friendIds.slice(j, j + CHUNK));
-							}
-							for (const c of chunks) {
-								await env.db.insert(steamFriends).values(
-									c.map((id) => ({ steamId: row.steamId, friendSteamId: id, checkedAt: now }))
-								);
-							}
-						}
-					}
+					const evidence = await friendEvidence(env.STEAM_API_KEY!, row.steamId);
 					if (evidence.state === 'unknown') {
 						if (row.friendsState === 'unknown')
 							await env.db

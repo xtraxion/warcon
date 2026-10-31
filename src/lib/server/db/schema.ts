@@ -888,17 +888,6 @@ export const steamProfiles = pgTable('steam_profiles', {
 	error: text('error').notNull().default('')
 });
 
-/** Cached Steam friend list entries for intersection queries (online players with friends here). */
-export const steamFriends = pgTable(
-	'steam_friends',
-	{
-		steamId: text('steam_id').notNull(),
-		friendSteamId: text('friend_steam_id').notNull(),
-		checkedAt: ts('checked_at').notNull().defaultNow()
-	},
-	(t) => [primaryKey({ columns: [t.steamId, t.friendSteamId] }), index('steam_friends_steam_idx').on(t.steamId)]
-);
-
 /** The poller's copy of each game server's ban list, so bans on one server are visible from another. */
 export const serverBans = pgTable(
 	'server_bans',
