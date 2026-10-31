@@ -398,6 +398,8 @@ export interface PlayerMark {
 	record: { kills: number; deaths: number } | null;
 	/** how many sessions this player has had on this server */
 	sessions: number;
+	/** names of Steam friends who are also on this server right now */
+	friendsOnline: string[];
 }
 
 export interface PlayerNoteView {

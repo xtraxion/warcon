@@ -110,7 +110,8 @@
 		deaths: { by: (r) => r.p.deaths, dir: 'desc' },
 		cash: { by: (r) => r.p.cash, dir: 'desc' },
 		ping: { by: (r) => r.p.ping },
-		sessions: { by: (r) => r.s.marks[r.p.steamId]?.sessions ?? 0, dir: 'desc' }
+		sessions: { by: (r) => r.s.marks[r.p.steamId]?.sessions ?? 0, dir: 'desc' },
+		friends: { by: (r) => r.s.marks[r.p.steamId]?.friendsOnline?.length ?? 0, dir: 'desc' }
 	});
 	let rows = $derived(
 		sort.sorted(
@@ -328,6 +329,7 @@
 				<SortHeader {sort} key="cash" num>Cash</SortHeader>
 				<SortHeader {sort} key="ping" num>Ping</SortHeader>
 				<SortHeader {sort} key="sessions" num>Sessions</SortHeader>
+				<SortHeader {sort} key="friends">Friends</SortHeader>
 				{#if actionsAny}<th class="text-right">Actions</th>{/if}
 			</tr>
 		</thead>
@@ -394,6 +396,11 @@
 					<td class="num">{p.kills}</td><td class="num">{p.deaths}</td>
 					<td class="num">{fmtNum(p.cash)}</td><td class="num">{p.ping ?? '—'}</td>
 					<td class="num">{m?.sessions ?? 0}</td>
+					<td class="whitespace-nowrap text-[12.5px] text-mist-400">
+						{#if m?.friendsOnline?.length}
+							{m.friendsOnline.join(', ')}
+						{:else}—{/if}
+					</td>
 					{#if actionsAny}
 						<td class="py-1.5 text-right whitespace-nowrap">
 							<div class="inline-flex gap-2">
