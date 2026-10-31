@@ -298,7 +298,8 @@ export async function marksFor(
 			firstVisit: (visits.get(steamId) ?? 0) <= 1,
 			risk: riskFor(env, profiles.get(steamId), l, performance.get(steamId), staff),
 			steamName: profiles.get(steamId)?.persona || null,
-			record: records.get(steamId) ?? null
+			record: records.get(steamId) ?? null,
+			sessions: visits.get(steamId) ?? 0
 		};
 	});
 }

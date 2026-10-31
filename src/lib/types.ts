@@ -396,6 +396,8 @@ export interface PlayerMark {
 	steamName: string | null;
 	/** kills and deaths over the matches the player finished on this server; null before the first */
 	record: { kills: number; deaths: number } | null;
+	/** how many sessions this player has had on this server */
+	sessions: number;
 }
 
 export interface PlayerNoteView {
