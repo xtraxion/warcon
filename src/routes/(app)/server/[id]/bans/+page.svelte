@@ -257,13 +257,13 @@
 <div class="mb-4">
 	<div class="flex gap-1" role="tablist" aria-label="Bans and kicks">
 		<a
-			class={"tab " + (tab === 'bans' ? 'tab-active' : '')}
+			class={"tab-link " + (tab === 'bans' ? 'tab-link-active' : '')}
 			href={"/server/" + encodeURIComponent(id) + "/bans?tab=bans"}
 			role="tab"
 			aria-selected={tab === 'bans'}
 		>Bans</a>
 		<a
-			class={"tab " + (tab === 'kicks' ? 'tab-active' : '')}
+			class={"tab-link " + (tab === 'kicks' ? 'tab-link-active' : '')}
 			role="tab"
 			href={"/server/" + encodeURIComponent(id) + "/bans?tab=kicks"}
 			aria-selected={tab === 'kicks'}
@@ -427,7 +427,7 @@
 {#if tab === 'kicks'}
 <div class="panel">
 	<div class="mb-3 flex flex-wrap items-center gap-2">
-		<span class="label-sm mb-0!">Kicks on this server</span>
+		<span class="label-sm mb-0!">Kicks on this server ({kicks.length})</span>
 	</div>
 	<div class="table-wrap">
 		<table>
