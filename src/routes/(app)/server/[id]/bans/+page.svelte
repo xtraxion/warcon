@@ -169,6 +169,10 @@
 		void id;
 		refreshBans().catch((err) => toast(errorMessage(err), 'err'));
 	});
+	$effect(() => {
+		const ids = kicks.map((k) => k.target).filter((s) => !!s);
+		if (ids.length) void lookupSteam(ids);
+	});
 	const banSource = (steamId: string) => listState?.bans[steamId] ?? null;
 
 	async function syncNow() {
@@ -443,10 +447,16 @@
 				{#each kicks as k}
 					<tr>
 						<td class="font-mono text-[12px] whitespace-nowrap text-mist-400">{utc(k.ts)}</td>
-						<td>
-							<SteamName profile={steam[k.target]} class="max-w-[240px] font-medium" />
-							<span class="block font-mono text-[12.5px] text-mist-400">{k.target}</span>
-						</td>
+							<td>
+							<a
+									href="/server/{encodeURIComponent(id)}/players/{k.target}"
+									data-sveltekit-preload-data="tap"
+									class="block hover:text-accent hover:underline"
+								>
+								<SteamName profile={steam[k.target]} class="max-w-[240px] font-medium" />
+									<span class="block font-mono text-[12.5px] text-mist-400">{k.target}</span>
+								</a>
+							</td>
 						<td>{k.actorName}</td>
 						<td>{#if k.reason}{k.reason}{:else}<span class="text-mist-600">—</span>{/if}</td>
 					</tr>

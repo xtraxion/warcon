@@ -8,6 +8,7 @@
 	import Pulse from '$lib/components/Pulse.svelte';
 	import RoleBadge from '$lib/components/RoleBadge.svelte';
 	import type { LiveView, Status } from '$lib/types';
+	import type { TrackedServer } from '$lib/server/tracked-servers';
 	import type { PageProps } from './$types';
 
 	let { data }: PageProps = $props();
@@ -261,6 +262,44 @@
 			{/each}
 		</div>
 	{/if}
+{/if}
+
+{#if data.tracked?.length}
+	<div class="mt-10 mb-2 text-[13px] font-semibold uppercase tracking-wider text-mist-500">
+		Tracked Servers
+	</div>
+	<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+		{#each data.tracked as t (t.id)}
+			<div
+				class="block rise panel transition hover:border-white/16 hover:bg-white/[0.055]"
+			>
+				<div class="mb-1 flex items-center gap-2">
+					<span class="badge bg-accent/15 text-accent">External</span>
+					<span class="truncate font-semibold">{t.name}</span>
+					<span class="ml-auto font-mono text-[13px] text-mist-400">{fmtNum(t.players)} / {fmtNum(t.maxPlayers)}</span>
+				</div>
+					{#if t.map}
+						<div class="mb-2 truncate text-[13px] text-mist-400">{mapName(t.map)}</div>
+						<MapArt map={t.map} lighting={t.lighting} variant="wide" alt="" class="mb-2" />
+					{/if}
+					<div class="mb-3 progress"><span class="progress-bar" style="width:{t.maxPlayers ? Math.min(100, Math.round((t.players / t.maxPlayers) * 100)) : 0}%"></span></div>
+					<div class="flex items-center justify-between gap-2">
+						<div class="flex items-center gap-2 text-[12.5px] text-mist-500">
+							<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+							wardogjoinlist.com
+						</div>
+						<a
+								href={t.joinUrl}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="inline-flex items-center gap-1.5 rounded bg-accent px-3 py-1 text-[13px] font-semibold text-black transition hover:bg-accent/80"
+							>
+								Join
+							</a>
+						</div>
+			</div>
+		{/each}
+	</div>
 {/if}
 
 {#if announcing}

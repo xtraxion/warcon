@@ -393,6 +393,7 @@
 					</td>
 					<td><FactionChip faction={p.faction} scores={s.scores} /></td>
 					<td class="num">{p.kills}</td><td class="num">{p.deaths}</td>
+					<td class="num">{fmtNum(p.cash)}</td><td class="num">{p.ping ?? '—'}</td>
 					<td class="num">{m?.sessions ?? 0}</td>
 					{#if actionsAny}
 						<td class="py-1.5 text-right whitespace-nowrap">
