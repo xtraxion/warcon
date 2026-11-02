@@ -211,7 +211,7 @@
 			>
 		</div>
 	{:else}
-		<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+		<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 			{#each shown as s (s.id)}
 				{@const sum = summaries[s.id]}
 				<a
@@ -268,7 +268,7 @@
 	<div class="mt-10 mb-2 text-[13px] font-semibold uppercase tracking-wider text-mist-500">
 		Tracked Servers
 	</div>
-	<div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
 		{#each data.tracked as t (t.id)}
 			<div
 				class="block rise panel transition hover:border-white/16 hover:bg-white/[0.055]"

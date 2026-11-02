@@ -1,4 +1,4 @@
-import { error } from '@sveltejs/kit';
+import { getEnv } from '$lib/server/env';
 
 export interface TrackedServer {
 	id: string;
@@ -22,11 +22,15 @@ const TRACKED = [
 
 /** Fetch status of tracked external servers from wardogserverlist.com. */
 export async function fetchTrackedServers(): Promise<TrackedServer[]> {
+	const apiKey = getEnv().WARDOG_API_KEY || '';
 	const results = await Promise.all(
 		TRACKED.map(async (s) => {
 			try {
 				const res = await fetch(`${ENDPOINT}?key=id%7C${encodeURIComponent(s.key)}`, {
-					headers: { Accept: 'application/json' },
+					headers: {
+						Accept: 'application/json',
+						...(apiKey ? { 'X-API-Key': apiKey } : {}),
+					},
 					cf: { cacheEverything: false } as any,
 				});
 				if (!res.ok) {
