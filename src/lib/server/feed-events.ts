@@ -64,6 +64,7 @@ import { memoryOf } from './observe';
 import { onMatchFeed } from './match-feed';
 import { publicMessage } from './http';
 import { notifyBounty, notifyTeamKills, type BountyCard } from './webhook-delivery';
+import { forwardToRelays } from './feed-relay';
 import {
 	BOUNTY_CLAIM,
 	BOUNTY_REWARD,
@@ -90,6 +91,7 @@ export async function onKillsIngested(
 ): Promise<void> {
 	if (!kills.length) return;
 	emit({ type: 'kills', serverId, kills });
+	void forwardToRelays(env, serverId, { type: 'kills', serverId, kills });
 	const named = namedIn(kills);
 	try {
 		await recordFeedNames(env, serverId, kills, named);

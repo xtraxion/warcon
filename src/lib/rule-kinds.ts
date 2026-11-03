@@ -94,6 +94,13 @@ export const RULE_KINDS: { kind: TriggerKind; group: RuleGroup; label: string; b
 			'Kick or flag players who go too long in a live match without a kill, a death or cash earned, even when a macro keeps the idle kick off them.'
 	},
 	{
+		kind: 'cash_watch',
+		group: 'In play',
+		label: 'AFK Protection Match',
+		blurb:
+			'Monitor target players and respawn them if their cash has not increased within a random time window.'
+	},
+	{
 		kind: 'seed_reward',
 		group: 'Seeding and rewards',
 		label: 'Seeding reward',

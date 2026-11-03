@@ -698,7 +698,7 @@
 				kind === 'afk_protection' ? 3 : kind === 'weather_cycle' ? 30 : 15
 			),
 			minPlayers: n('minPlayers', kind === 'bounty' || kind === 'afk_watch' ? 20 : 1),
-			maxPlayers: typeof c.maxPlayers === 'number' ? c.maxPlayers : null,
+			maxPlayers: n('maxPlayers', kind === 'cash_watch' ? 100 : 100),
 			afterMinutes: n('afterMinutes', 20),
 			cooldownMinutes: n('cooldownMinutes', 30),
 			vacBans: b('vacBans', true),
@@ -751,6 +751,9 @@
 			untilFull: b('untilFull', true),
 			fullAt: typeof c.fullAt === 'number' ? c.fullAt : null,
 			minutes: n('minutes', kind === 'afk_watch' ? 15 : 60),
+			minMinutes: n('minMinutes', kind === 'cash_watch' ? 5 : 5),
+			maxMinutes: n('maxMinutes', kind === 'cash_watch' ? 9 : 9),
+			killMessage: s('killMessage', kind === 'cash_watch' ? 'AFK Protection Match: no cash earned. Respawning.' : ''),
 			// a new AFK watch rule warns first
 			warnMinutes: n('warnMinutes', 10),
 			windowDays: n('windowDays', 7),
@@ -785,6 +788,7 @@
 			gap: n('gap', 3),
 			clans: b('clans', !t),
 			exempt: Array.isArray(c.exempt) ? (c.exempt as string[]).join('\n') : '',
+			targets: Array.isArray(c.targets) ? (c.targets as string[]).join('\n') : '',
 			watchOnly: b('watchOnly', false),
 			causes: Array.isArray(c.causes)
 				? [...(c.causes as string[])]
@@ -923,6 +927,14 @@
 					spareReserved: f.spareReserved,
 					exempt: f.exempt.split(/[\s,]+/).filter(Boolean),
 					reason: f.reason
+				};
+			case 'cash_watch':
+				return {
+					minMinutes: Number(f.minMinutes),
+					maxMinutes: Number(f.maxMinutes),
+					killMessage: f.killMessage,
+					maxPlayers: Number(f.maxPlayers),
+					targets: f.targets.split(/[\s,]+/).filter(Boolean)
 				};
 			case 'restart_notice':
 				return {
@@ -2655,6 +2667,60 @@
 						kick for someone who plays again before it goes is dropped. While nobody on the server
 						earns cash for that long (a host may not report it), the rule holds and says so on its
 						row.
+					</p>
+				{:else if f.kind === 'cash_watch'}
+					<fieldset class="space-y-2">
+						<legend class="field-label">Target players</legend>
+						<textarea
+							class="input font-mono text-[13px]"
+							rows="4"
+							bind:value={f.targets}
+							placeholder="SteamID64s, one per line"
+						/>
+						<p class="note">Only these SteamIDs are monitored. Empty = rule does nothing.</p>
+					</fieldset>
+					<fieldset class="space-y-2">
+						<legend class="field-label">Window</legend>
+						<div class="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[13px]">
+							Between
+							<input
+								class="input w-20 text-right"
+								type="number"
+								min="5"
+								max="120"
+								bind:value={f.minMinutes}
+							/>
+							and
+							<input
+								class="input w-20 text-right"
+								type="number"
+								min="5"
+								max="120"
+								bind:value={f.maxMinutes}
+							/>
+							minutes
+						</div>
+					</fieldset>
+
+					<fieldset class="space-y-2">
+						<legend class="field-label">Kill message</legend>
+						<input class="input" type="text" bind:value={f.killMessage} maxlength="200" />
+					</fieldset>
+					<fieldset class="space-y-2">
+						<legend class="field-label">Maximum players</legend>
+						<input
+							class="input w-20 text-right"
+							type="number"
+							min="1"
+							max="1000"
+							bind:value={f.maxPlayers}
+						/>
+					</fieldset>
+					{@render placeholders('cash_watch', [f.killMessage])}
+					<p class="note">
+						Each target gets a random timer between min and max minutes. If their cash has not
+						increased when the timer fires, they are killed and optionally whispered. Cash growth
+						resets the timer. The rule only acts during live matches.
 					</p>
 				{:else if f.kind === 'two_teams'}
 					<fieldset class="space-y-2 text-[13px]">

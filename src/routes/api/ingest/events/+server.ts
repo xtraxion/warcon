@@ -65,7 +65,7 @@ export const POST = route(async (event) => {
 				}
 			}));
 			// Also fire-and-forget to per-server relays.
-			void forwardToRelays(env, server.id, batch);
+			void forwardToRelays(env, server.id, { serverId: server.id, serverName: server.name, events: batch.events || [] });
 		} catch (e) {
 			console.error('[warcon] kill feed batch queueEvent', e);
 		}

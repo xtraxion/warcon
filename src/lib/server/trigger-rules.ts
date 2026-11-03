@@ -9,6 +9,7 @@ import { validateKillDistance, type KillDistanceConfig } from './kill-distance';
 import { validateTwoTeams, type TwoTeamsConfig } from './two-teams';
 import { validateAfkProtection, type AfkProtectionConfig } from './afk-protection';
 import { validateAfkWatch, type AfkWatchConfig } from './afk-watch';
+import { validateCashWatch, type CashWatchConfig, type CashWatchState, cashWatchDueAt } from './cash-watch';
 import { validateNameChange, type NameChangeConfig } from './name-change';
 import { validateBounty, type BountyConfig } from './bounty';
 import { validateRotationShuffle, type RotationShuffleConfig } from './rotation-shuffle';
@@ -48,6 +49,7 @@ export const TRIGGER_KINDS: TriggerKind[] = [
 	'live_name',
 	'restart_skip',
 	'afk_watch',
+	'cash_watch',
 	'weather_cycle'
 ];
 export const TRIGGER_LABELS: Record<TriggerKind, string> = {
@@ -72,6 +74,7 @@ export const TRIGGER_LABELS: Record<TriggerKind, string> = {
 	live_name: 'Live server name',
 	restart_skip: 'Skip map after restart',
 	afk_watch: 'AFK watch',
+cash_watch: 'AFK Protection Match',
 	weather_cycle: 'Weather cycle'
 };
 
@@ -241,6 +244,7 @@ export type TriggerConfig =
 	| TwoTeamsConfig
 	| KillDistanceConfig
 	| AfkProtectionConfig
+	| CashWatchConfig
 	| NameChangeConfig
 	| BountyConfig
 	| RotationShuffleConfig
@@ -456,6 +460,8 @@ export function validateConfig(kind: TriggerKind, raw: unknown): TriggerConfig {
 			return validateRestartSkip();
 		case 'afk_watch':
 			return validateAfkWatch(c);
+		case 'cash_watch':
+			return validateCashWatch(c);
 		case 'weather_cycle':
 			return validateWeatherCycle(c);
 	}
