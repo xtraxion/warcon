@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { watchLive } from '$lib/live';
+	import { onMount } from 'svelte';
+import { watchLive } from '$lib/live';
 	import { fmtNum, mapName } from '$lib/format';
 	import { can } from '$lib/capabilities';
 	import { setHealth } from '$lib/health.svelte';
@@ -16,6 +17,7 @@
 	type Summary =
 		{ ok: true; status: Status; reservedSlots: number | null } | { ok: false; error: string };
 	let summaries = $state<Record<string, Summary>>({});
+let tracked = $state<TrackedServer[]>(data.tracked || []);
 
 	// Every observation the worker makes of these servers arrives here as it happens.
 	function onLive(v: LiveView) {
@@ -30,6 +32,22 @@
 	$effect(() => {
 		const ids = data.servers.map((s) => s.id);
 		return watchLive(ids, onLive, undefined, undefined, { org: data.scope?.id ?? null });
+	});
+
+	// Poll tracked servers every 15 seconds
+	onMount(() => {
+		const refreshTracked = async () => {
+			try {
+				const res = await fetch('/api/tracked-servers');
+				if (res.ok) {
+					tracked = await res.json();
+				}
+			} catch {
+				/* keep previous data on error */
+			}
+		};
+		const iv = setInterval(refreshTracked, 15000);
+		return () => clearInterval(iv);
 	});
 
 	// ── Sorting and filtering ─────────────────────────────────────────────────────────────
@@ -269,7 +287,7 @@
 		Tracked Servers
 	</div>
 	<div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-		{#each data.tracked as t (t.id)}
+		{#each tracked as t (t.id)}
 			<div
 				class="block rise panel transition hover:border-white/16 hover:bg-white/[0.055]"
 			>
