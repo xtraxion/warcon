@@ -26,6 +26,8 @@ export interface Env {
 	SETUP_TOKEN?: string;
 	/** Optional: Steam Web API key for persona/avatar lookup. */
 	STEAM_API_KEY?: string;
+	/** Optional: wardogserverlist.com API key for tracked server status. */
+	WARDOG_API_KEY?: string;
 	DISCORD_CLIENT_ID?: string;
 	DISCORD_CLIENT_SECRET?: string;
 	APP_NAME?: string;
@@ -198,6 +200,7 @@ export async function initEnv(opts: { role?: Role } = {}): Promise<Env> {
 		ENCRYPTION_KEY: processEnv.ENCRYPTION_KEY,
 		SETUP_TOKEN: processEnv.SETUP_TOKEN,
 		STEAM_API_KEY: processEnv.STEAM_API_KEY,
+		WARDOG_API_KEY: processEnv.WARDOG_API_KEY,
 		DISCORD_CLIENT_ID: processEnv.DISCORD_CLIENT_ID,
 		DISCORD_CLIENT_SECRET: processEnv.DISCORD_CLIENT_SECRET,
 		APP_NAME: processEnv.APP_NAME,

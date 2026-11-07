@@ -31,8 +31,7 @@ export async function fetchTrackedServers(): Promise<TrackedServer[]> {
 						Accept: 'application/json',
 						...(apiKey ? { 'X-API-Key': apiKey } : {}),
 					},
-					cf: { cacheEverything: false } as any,
-				});
+					});
 				if (!res.ok) {
 					return { ...s, map: '', lighting: 'DayClear', players: 0, maxPlayers: 0, joinUrl: '' };
 				}
