@@ -589,7 +589,8 @@ export type TriggerKind =
 	| 'rotation_shuffle'
 	| 'live_name'
 	| 'restart_skip'
-	| 'weather_cycle';
+	| 'weather_cycle'
+	| 'death_whisper';
 
 export interface TriggerView {
 	id: string;
