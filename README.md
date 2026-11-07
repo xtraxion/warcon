@@ -2019,3 +2019,64 @@ settings) · `serverLog` (Audit trail) · `raw` (Raw RCON).
 - Audit rows are never deleted by the panel. Prune them with SQL if you need to. Deleting an
   account pseudonymises its rows rather than removing them (see
   [Accounts and personal data](#accounts-and-personal-data)).
+
+
+## Local Extensions (this fork)
+
+This fork adds the following features beyond upstream:
+
+### Automation
+- **AFK Protection**: kick and respawn specific players after a random time window and cash increase
+- **Cash Watch**: timer-based respawn trigger for AFK Protection
+- **Death whisper**: whisper players while they wait to respawn (upstream feature, merged)
+
+### Dashboard & Overview
+- **Tracked Servers**: show external WARDOGS servers on the dashboard (5 servers: Skarvox, Panzerknacker, CGT #1-3)
+- **15s polling**: auto-refresh tracked server data every 15 seconds
+- **Weather cycle countdown**: show next weather change in Overview Scores panel
+- **Weather preview image**: show map preview below weather selector
+- **Manual weather change**: change weather from match control panel
+- **Map override panel**: moved above cash chart for better UX
+
+### Players & Bans
+- **Steam profiles for kick targets**: show Steam persona data in bans tab
+- **Kick count**: show how many times a player was kicked
+- **Sessions column**: show sessions in online players table
+- **2MG tag filter**: filter online players by clan tag
+- **Live player count per team**: show current player count beside faction names
+- **SavedMessages picker**: pick saved messages in kick/ban dialog
+- **Kicks tab**: separate kicks view on bans page
+- **Bulk delete empty matches**: remove matches with zero players
+
+### Matches & History
+- **Match counter**: show filtered match count when hide empty is active
+- **Match history page**: dedicated matches tab with per-match details
+- **Match broadcast MVP**: announce MVP and top three at match end
+- **Delete empty matches**: filter and remove matches with <20 players
+
+### UI/UX
+- **Weather dropdown order**: fix lighting order in weather selector
+- **Unassigned players**: show White faction players as unassigned in Scores
+- **White dot filter**: show unassigned team filter above other teams
+- **Ban message as strip**: expandable ban text field with preview
+- **Ban list per server**: server-specific ban list with reason and expiry
+
+### Backend & Infrastructure
+- **Risk score calculation**: advisory score for new connections
+- **High-ping kick with minPlayers**: only kick when server is populated
+- **Panel-enforced bans**: bans enforced by panel, not game server list
+- **Steam friends lists**: cached weekly without blocking API calls
+- **Name filter docs**: comprehensive name filter documentation
+- **Risk score per reader**: recalculate risk for each user role
+- **Ban-age, ping kick, risk formats**: consistent time formatting
+- **Match sample persistence**: never delete raw samples or rollups
+- **24h WARDOGS restart**: upstream restart schedule updated to 24 hours
+- **Player match lines**: record each player's performance per match from scoreboard
+- **Server purge stats**: org owner can purge a server's statistics
+- **CI local script**: run CI checks locally with scripts/ci.sh
+- **Smoke test improvements**: wait for member-reserved switch and expiry sweep
+
+---
+
+*This fork tracks [warcon-app/warcon](https://github.com/warcon-app/warcon) and adds community features for [2MG] servers.*
+
