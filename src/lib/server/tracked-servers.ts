@@ -14,6 +14,7 @@ const ENDPOINT = 'https://wardogserverlist.com/api/server';
 
 const TRACKED = [
 	{ id: 'skarvox',   key: '7eef0d25-b12e-4761-8753-2c937a9150ca', name: 'Skarvox' },
+	{ id: 'skarvox-2', key: 'af9bae49-b54f-4958-8bfe-c6f4dec6c5f3', name: '[GER/ENG] #2 GEFECHTSFELD' },
 	{ id: 'panzerknacker', key: '97afa058-b86e-47c5-bc49-9ad25505fc2a', name: 'Panzerknacker :Tank:' },
 	{ id: 'cgt-1',     key: '7c2a5ea6-c0bd-490f-a600-7231bf224c33', name: 'CGT #1' },
 	{ id: 'cgt-2',     key: '04f021da-d0dc-43f2-8132-a847a303b587', name: 'CGT #2' },
@@ -52,7 +53,7 @@ export async function fetchTrackedServers(): Promise<TrackedServer[]> {
 					lighting: sv.sky ?? 'DayClear',
 					players: sv.players ?? 0,
 					maxPlayers: sv.maxPlayers ?? 0,
-					joinUrl: `https://wardogjoinlist.com/join?key=id%7C${encodeURIComponent(s.key)}`,
+					joinUrl: `https://wardogserverlist.com/join?key=id%7C${encodeURIComponent(s.key)}`,
 				};
 			} catch {
 				return { ...s, map: '', lighting: 'DayClear', players: 0, maxPlayers: 0, joinUrl: '' };

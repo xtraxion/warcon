@@ -50,13 +50,9 @@ export const TRIGGER_KINDS: TriggerKind[] = [
 	'live_name',
 	'restart_skip',
 	'afk_watch',
-<<<<<<< HEAD
 	'cash_watch',
-	'weather_cycle'
-=======
 	'weather_cycle',
 	'death_whisper'
->>>>>>> upstream/main
 ];
 export const TRIGGER_LABELS: Record<TriggerKind, string> = {
 	welcome: 'Welcome whisper',
@@ -80,13 +76,9 @@ export const TRIGGER_LABELS: Record<TriggerKind, string> = {
 	live_name: 'Live server name',
 	restart_skip: 'Skip map after restart',
 	afk_watch: 'AFK watch',
-<<<<<<< HEAD
-cash_watch: 'AFK Protection Match',
-	weather_cycle: 'Weather cycle'
-=======
+	cash_watch: 'AFK Protection Match',
 	weather_cycle: 'Weather cycle',
 	death_whisper: 'Death whisper'
->>>>>>> upstream/main
 };
 
 export interface WelcomeConfig {

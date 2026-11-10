@@ -302,10 +302,15 @@ let tracked = $state<TrackedServer[]>(data.tracked || []);
 					{/if}
 					<div class="mb-3 progress"><span class="progress-bar" style="width:{t.maxPlayers ? Math.min(100, Math.round((t.players / t.maxPlayers) * 100)) : 0}%"></span></div>
 					<div class="flex items-center justify-between gap-2">
-						<div class="flex items-center gap-2 text-[12.5px] text-mist-500">
-							<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
-							wardogjoinlist.com
-						</div>
+						<a
+								href={`https://wardogserverlist.com/server?key=id%7C${encodeURIComponent(t.key)}`}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="flex items-center gap-2 text-[12.5px] text-mist-500 hover:text-mist-300 transition"
+							>
+								<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" x2="21" y1="14" y2="3"/></svg>
+								wardogserverlist.com
+							</a>
 						<a
 								href={t.joinUrl}
 								target="_blank"
