@@ -2,6 +2,7 @@ import { getEnv } from '$lib/server/env';
 
 export interface TrackedServer {
 	id: string;
+	key?: string;
 	name: string;
 	map: string;
 	lighting: string;
@@ -48,6 +49,7 @@ export async function fetchTrackedServers(): Promise<TrackedServer[]> {
 				const sv = payload.server ?? {};
 				return {
 					id: s.id,
+					key: s.key,
 					name: sv.name ?? s.name,
 					map: sv.world ?? '',
 					lighting: sv.sky ?? 'DayClear',
