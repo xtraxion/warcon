@@ -514,6 +514,7 @@
 							disabled={busy || !rows.length}
 							onclick={() => (savingAs = { name: stagedSet?.set.name ?? '' })}>Save as…</button
 						>
+						<a class="btn" href={mapSetsHref}>Manage map sets</a>
 					{/if}
 				</div>
 			</div>
