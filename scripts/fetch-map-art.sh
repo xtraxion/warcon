@@ -5,7 +5,7 @@
 set -eu
 BASE="http://rcon.wardogs.com/img/maps"
 OUT="$(cd "$(dirname "$0")/.." && pwd)/static/maps"
-MAPS="Kavkazi Europe NorthAmerica"
+MAPS="Kavkazi Europe NorthAmerica Russia"
 LIGHTS="DayStartClear DayEarlyClear DayEarlyFog DayClear DayLateClear DayLateGray DayLateGrayFog DayEndClear DayLateRain"
 VARIANTS="square wide 720"
 for m in $MAPS; do
