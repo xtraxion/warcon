@@ -24,13 +24,14 @@ describe('catalogue', () => {
 		for (const c of viewer) expect(operator).toContain(c);
 		for (const c of operator) expect(admin).toContain(c);
 		// admin starts with everything but players' chat, which an org's owners hand out themselves
-		expect(admin).toEqual(CAPABILITIES.filter((c) => c !== 'chat.read'));
+		expect(admin).toEqual(CAPABILITIES.filter((c) => c !== 'chat.read' && c !== 'chat.archive.read'));
 		expect(viewer).toEqual([VIEW]);
 	});
 
 	test('reading chat is in no built-in role, and never an API key’s', () => {
 		for (const role of Object.values(BUILTIN_CAPABILITIES)) expect(role).not.toContain('chat.read');
-		expect(PEOPLE_ONLY).toEqual(['chat.read']);
+		for (const role of Object.values(BUILTIN_CAPABILITIES)) expect(role).not.toContain('chat.archive.read');
+		expect(PEOPLE_ONLY).toEqual(['chat.read', 'chat.archive.read']);
 		expect(CAPABILITY_INFO['chat.read'].group).toBe('read');
 	});
 });

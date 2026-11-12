@@ -6,6 +6,7 @@
 // lease (leadership.ts), renewed every few seconds and re-checked inside every write.
 import { eq } from 'drizzle-orm';
 import type { Env } from './env';
+import { expireChat } from './chat-archive';
 import type { OrgRow, ServerRow } from './access';
 import { organizations, servers } from './db/schema';
 import { expireEntries } from './lists-sync';
@@ -379,6 +380,7 @@ async function housekeep(env: Env): Promise<void> {
 	if (housekeeping) return;
 	housekeeping = true;
 	try {
+		await expireChat(env);
 		await rollupSamples(env);
 	} catch (err) {
 		console.error('[warcon] rollups failed', forLog(err));

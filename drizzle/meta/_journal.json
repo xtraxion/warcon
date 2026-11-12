@@ -432,6 +432,21 @@
       "breakpoints": true,
       "when": 1792362823266,
       "version": "7"
+    },
+    {
+      "idx": 54,
+      "id": "0054",
+      "tag": "0054_chat_archive",
+      "breakpoints": true,
+      "when": 1794519000000,
+      "version": "7"
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1794523144740,
+      "tag": "0055_tan_chat",
+      "breakpoints": true
     }
   ],
   "dialect": "postgresql"

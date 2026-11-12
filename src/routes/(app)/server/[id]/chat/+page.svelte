@@ -1,8 +1,7 @@
 <script lang="ts">
 	// The in-game chat as players type it (Season 3), for those who hold Read chat, under the
 	// game's own chat terms. The lines are read from the game through the panel every few seconds
-	// while this tab is open and live in this page alone: the panel stores none of them, and
-	// leaving the tab forgets them. Every read is checked by the action it goes through
+	// while this tab is open. Only lines belonging to the current match are shown. Every read is checked by the action it goes through
 	// (chatTerms, chat: Read chat; chatTermsAccept: an owner of the organisation, in person).
 	import { api, ApiError, rconGet, rconPost, errorMessage } from '$lib/api';
 	import { poll } from '$lib/poll';
@@ -52,6 +51,7 @@
 	/** newest first */
 	let lines = $state<ChatLine[]>([]);
 	let loaded = $state(false);
+	let currentMatch = $state<{ id: number; startedAt: string } | null>(null);
 	let busy = $state(false);
 	/** the version an owner accepted here that the server said has yet to take effect */
 	let pending = $state(0);
@@ -139,7 +139,7 @@
 		if (read.accepted || read.requiredVersion !== pending) pending = 0;
 	}
 
-	async function readChat() {
+	async function readChat(matchId: number) {
 		for (let page = 0; page < MAX_PAGES; page++) {
 			let read: ChatRead;
 			try {
@@ -150,12 +150,14 @@
 				if (!closed && err instanceof ApiError && err.status === 409) startOver(true);
 				return;
 			}
+			if (currentMatch?.id !== matchId) return;
 			succeeded();
 			const next = takeRead({ lines, latest }, read);
 			// the game numbers its lines from 1 again after a restart: start over with it
 			if (next.restarted) startOver(false);
 			else {
-				lines = next.lines;
+				const start = currentMatch ? Date.parse(currentMatch.startedAt) : NaN;
+				lines = next.lines.filter((line) => line.at && Date.parse(line.at) >= start);
 				latest = next.latest;
 				loaded = true;
 			}
@@ -185,7 +187,15 @@
 		if (restarted()) startOver(true);
 		// not accepted yet: look again now and then, for an owner may accept them from another page
 		if (!terms || (!terms.accepted && (pending || ++waited % RECHECK === 0))) await readTerms();
-		if (!closed && terms?.accepted) await readChat();
+		if (!closed && terms?.accepted) {
+			try {
+				const { match } = await api<{ match: { id: number; startedAt: string } | null }>('GET', `/api/servers/${encodeURIComponent(id)}/chat/current`);
+				if (match?.id !== currentMatch?.id) startOver(false);
+				currentMatch = match;
+				if (match) await readChat(match.id);
+				else { lines = []; loaded = true; }
+			} catch (err) { currentMatch = null; lines = []; failed(err); }
+		}
 	}
 	$effect(() => poll(tick, EVERY_MS));
 
@@ -224,7 +234,7 @@
 		}
 		// what the server says now: accepted, still to take effect, or another version to read
 		await readTerms();
-		if (!closed && terms?.accepted) await readChat();
+		if (!closed && terms?.accepted) await tick();
 	}
 
 	const clock = (iso: string | null) =>
@@ -403,7 +413,7 @@
 										: 'Loading…'
 									: lines.length
 										? 'Nothing matches.'
-										: 'Nobody has said anything on this map yet.'}</td
+										: currentMatch ? 'Nobody has said anything in this match yet.' : 'No current match.'}</td
 							></tr
 						>
 					{/each}
@@ -456,9 +466,8 @@
 			</div>
 		{/if}
 		<p class="note">
-			Live from the game, which keeps the last lines of the map being played. The panel reads them
-			every few seconds while this tab is open and keeps none of them: no history, no audit detail,
-			nothing on Discord.
+			Showing only timestamped lines from the current match. Archived chat, when available, is
+			accessed from a finished match and retained for up to seven days.
 			{#if terms}
 				Shown under the game's chat terms, version {terms.acceptedVersion || terms.requiredVersion}:
 				<button class="text-accent underline" onclick={() => (showTerms = !showTerms)}

@@ -7,6 +7,7 @@ import type { ListKind } from './types';
 export const CAPABILITIES = [
 	'server.view',
 	'chat.read',
+	'chat.archive.read',
 	'chat.send',
 	'players.kick',
 	'players.kill',
@@ -56,6 +57,11 @@ export const CAPABILITY_INFO: Record<Capability, CapabilityInfo> = {
 	'chat.read': {
 		label: 'Read chat',
 		hint: "Read the in-game chat as players type it, to moderate the server, once an owner has accepted the game's chat terms. Nothing of it is kept.",
+		group: 'read'
+	},
+	'chat.archive.read': {
+		label: 'Read Archived Chats',
+		hint: 'Read archived match chat for moderation, for up to seven days.',
 		group: 'read'
 	},
 	'chat.send': {
@@ -179,7 +185,7 @@ const OPERATOR: Capability[] = [
  * who moderate a server, under the game's chat terms (it is not to be recorded, stored or
  * exported), so it is not handed to a program.
  */
-export const PEOPLE_ONLY: readonly Capability[] = ['chat.read'];
+export const PEOPLE_ONLY: readonly Capability[] = ['chat.read', 'chat.archive.read'];
 
 /**
  * What each built-in role starts with; owners may change them per organisation. Reading chat is
@@ -189,7 +195,7 @@ export const PEOPLE_ONLY: readonly Capability[] = ['chat.read'];
 export const BUILTIN_CAPABILITIES: Record<BuiltinRole, Capability[]> = {
 	viewer: ['server.view'],
 	operator: OPERATOR,
-	admin: CAPABILITIES.filter((c) => c !== 'chat.read')
+	admin: CAPABILITIES.filter((c) => c !== 'chat.read' && c !== 'chat.archive.read')
 };
 
 export const isBuiltinRole = (v: unknown): v is BuiltinRole =>

@@ -8,6 +8,7 @@
 // own: match bookkeeping, ban-list snapshot, org-list sync, Steam warm-up.
 import { and, desc, eq, isNull } from 'drizzle-orm';
 import type { Env } from './env';
+import { collectChat } from './chat-archive';
 import { forLog, publicMessage } from './http';
 import type { OrgRow, ServerRow } from './access';
 import { ACTIONS, readConfig } from './actions';
@@ -838,6 +839,7 @@ export async function observeServer(env: Env, m: ServerMemory, kinds: ObserveKin
 				period
 			})
 		);
+	if (look && isOwner()) await stage('chat archive', m, () => collectChat(env, client, server.id, period, m.startedAt));
 	if (isOwner()) await stage('lists', m, () => keepLists(env, m, client, started, ts));
 	// After the lists, so a ban just placed removes the player at this look, not the next.
 	const seen = players?.map((p) => p.steamId) ?? [];

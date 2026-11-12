@@ -6,7 +6,8 @@
 	import MatchPanel from '$lib/components/MatchPanel.svelte';
 	import FactionChip from '$lib/components/FactionChip.svelte';
 	import { causeLabel } from '$lib/causes';
-	import { fmtDuration } from '$lib/format';
+	import { fmtDuration, fmtTime } from '$lib/format';
+	import { shownName, type ChatLine } from '$lib/chat-read';
 	import type { KillView } from '$lib/types';
 	import type { PageProps } from './$types';
 
@@ -18,6 +19,33 @@
 	let more = $state(false);
 	let loading = $state(false);
 	let seq = 0;
+	let archiveOpen = $state(false);
+	let archiveLoading = $state(false);
+	let archiveError = $state('');
+	let archiveLines = $state<ChatLine[]>([]);
+	let archiveCursor = $state<string | null>(null);
+	let archiveRequest = 0;
+	async function loadArchive(append = false) {
+		const request = ++archiveRequest;
+		archiveLoading = true;
+		archiveError = '';
+		try {
+			const result = await api<{ lines: ChatLine[]; nextCursor: string | null }>('GET',
+				`/api/servers/${encodeURIComponent(id)}/matches/${encodeURIComponent(view.match.id)}/chat${qs({ cursor: append ? archiveCursor : undefined })}`);
+			if (request !== archiveRequest) return;
+			archiveLines = append ? [...archiveLines, ...result.lines] : result.lines;
+			archiveCursor = result.nextCursor;
+		} catch (err) {
+			if (request === archiveRequest) archiveError = errorMessage(err);
+		} finally {
+			if (request === archiveRequest) archiveLoading = false;
+		}
+	}
+	function toggleArchive() {
+		archiveOpen = !archiveOpen;
+		if (archiveOpen) void loadArchive();
+		else { archiveRequest++; archiveLines = []; archiveCursor = null; archiveLoading = false; }
+	}
 
 	async function load(append = false) {
 		const my = ++seq;
@@ -45,6 +73,7 @@
 	$effect(() => {
 		void view.match.id;
 		kills = [];
+		archiveRequest++; archiveOpen = false; archiveLines = []; archiveCursor = null; archiveLoading = false; archiveError = '';
 		if (view.kills) void load();
 	});
 	const dossier = (steamId: string) =>
@@ -63,6 +92,29 @@
 	<div class="mt-3">
 		<MatchPanel {view} hrefFor={dossier} showIds />
 	</div>
+	{#if data.server.caps.some((cap: string) => cap === 'chat.archive.read')}
+		<button class="mt-4 btn" onclick={toggleArchive} aria-expanded={archiveOpen}>
+			{archiveOpen ? 'Close archived chat' : 'Read archived chat'}
+		</button>
+		{#if archiveOpen}
+			<section class="mt-3" aria-label="Archived chat">
+				<p class="note">Archived chat is retained for up to seven days.</p>
+				{#if archiveError}<div class="callout border-danger/30 bg-danger/12">{archiveError}</div>{/if}
+				<div class="table-wrap"><table>
+					<thead><tr><th>Time</th><th>Channel</th><th>Player</th><th>Message</th></tr></thead>
+					<tbody>
+						{#each archiveLines as line, index (index)}
+							<tr><td>{line.at ? fmtTime(line.at) : '—'}</td><td>{line.channel || '—'}</td><td>{shownName(line)}</td><td class="break-words">{line.text}</td></tr>
+						{:else}
+							<tr><td colspan="4">{archiveLoading ? 'Loading…' : archiveError ? 'Could not load archived chat.' : 'No archived chat available for this match.'}</td></tr>
+						{/each}
+					</tbody>
+				</table></div>
+				{#if archiveCursor}<button class="mt-3 btn" disabled={archiveLoading} onclick={() => loadArchive(true)}>Load more</button>{/if}
+				{#if archiveError}<button class="mt-3 btn" disabled={archiveLoading} onclick={() => loadArchive(false)}>Retry</button>{/if}
+			</section>
+		{/if}
+	{/if}
 	{#if view.kills}
 		<span class="mt-4 field-label">Kill feed · {view.kills}</span>
 		<div class="table-wrap">

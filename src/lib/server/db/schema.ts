@@ -587,6 +587,31 @@ export const matches = pgTable(
 	]
 );
 
+export const chatArchive = pgTable('chat_archive', {
+	id: bigserial('id', { mode: 'number' }).primaryKey(),
+	serverId: text('server_id').notNull(),
+	matchId: bigint('match_id', { mode: 'number' }).notNull().references(() => matches.id, { onDelete: 'cascade' }),
+	sentAt: ts('sent_at').notNull(),
+	line: jsonb('line').notNull(),
+	fingerprint: text('fingerprint').notNull()
+}, (t) => [
+	uniqueIndex('chat_archive_server_fingerprint_idx').on(t.serverId, t.fingerprint),
+	index('chat_archive_match_idx').on(t.serverId, t.matchId, t.id),
+	index('chat_archive_expiry_idx').on(t.sentAt)
+]);
+
+export const chatArchivePending = pgTable('chat_archive_pending', {
+	serverId: text('server_id').notNull(),
+	fingerprint: text('fingerprint').notNull(),
+	sentAt: ts('sent_at').notNull(),
+	line: jsonb('line').notNull(),
+	firstSeenAt: ts('first_seen_at').notNull().defaultNow()
+}, (t) => [
+	uniqueIndex('chat_archive_pending_server_fingerprint_idx').on(t.serverId, t.fingerprint),
+	index('chat_archive_pending_expiry_idx').on(t.sentAt),
+	index('chat_archive_pending_first_seen_idx').on(t.firstSeenAt)
+]);
+
 /**
  * One row per kill the game's feed delivered (`[WDServerFeed]`, see docs/wardogs-api.md), with
  * what Warcon knew at receipt: the open match and both players' factions. History: never pruned;
