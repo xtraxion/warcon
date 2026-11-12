@@ -3,6 +3,7 @@
 	// page's data, and the match's kill feed from the kills route narrowed to it, paged.
 	import { api, errorMessage, qs } from '$lib/api';
 	import { toast } from '$lib/toast.svelte';
+	import { matches } from '$lib/table.svelte';
 	import MatchPanel from '$lib/components/MatchPanel.svelte';
 	import FactionChip from '$lib/components/FactionChip.svelte';
 	import { causeLabel } from '$lib/causes';
@@ -25,6 +26,14 @@
 	let archiveLines = $state<ChatLine[]>([]);
 	let archiveCursor = $state<string | null>(null);
 	let archiveRequest = 0;
+	let archiveChannel = $state('');
+	let archiveSearch = $state('');
+	let archiveChannels = $derived([...new Set(archiveLines.map((line) => line.channel).filter(Boolean))].sort());
+	let archiveChannelOptions = $derived(archiveChannel && !archiveChannels.includes(archiveChannel) ? [...archiveChannels, archiveChannel].sort() : archiveChannels);
+	let archiveRows = $derived(archiveLines.filter((line) =>
+		(!archiveChannel || line.channel === archiveChannel) &&
+		matches(archiveSearch, line.name, line.hiddenName, line.text, line.typed, line.steamId)
+	));
 	async function loadArchive(append = false) {
 		const request = ++archiveRequest;
 		archiveLoading = true;
@@ -73,7 +82,7 @@
 	$effect(() => {
 		void view.match.id;
 		kills = [];
-		archiveRequest++; archiveOpen = false; archiveLines = []; archiveCursor = null; archiveLoading = false; archiveError = '';
+		archiveRequest++; archiveOpen = false; archiveLines = []; archiveCursor = null; archiveLoading = false; archiveError = ''; archiveChannel = ''; archiveSearch = '';
 		if (view.kills) void load();
 	});
 	const dossier = (steamId: string) =>
@@ -99,14 +108,22 @@
 		{#if archiveOpen}
 			<section class="mt-3" aria-label="Archived chat">
 				<p class="note">Archived chat is retained for up to seven days.</p>
+				<div class="mb-3 flex flex-wrap items-center gap-3">
+					<select class="input w-36" aria-label="Channel" bind:value={archiveChannel}>
+						<option value="">All channels</option>
+						{#each archiveChannelOptions as c (c)}<option value={c}>{c}</option>{/each}
+					</select>
+					<input class="input w-full sm:w-64" type="search" placeholder="Filter by name, text or SteamID…" aria-label="Filter chat lines" bind:value={archiveSearch} />
+					<span class="ml-auto text-[12.5px] text-mist-600">{archiveRows.length} of {archiveLines.length} loaded lines{archiveCursor ? ' · load more to search the rest' : ''}</span>
+				</div>
 				{#if archiveError}<div class="callout border-danger/30 bg-danger/12">{archiveError}</div>{/if}
 				<div class="table-wrap"><table>
 					<thead><tr><th>Time</th><th>Channel</th><th>Player</th><th>Message</th></tr></thead>
 					<tbody>
-						{#each archiveLines as line, index (index)}
+						{#each archiveRows as line, index (index)}
 							<tr><td>{line.at ? fmtTime(line.at) : '—'}</td><td>{line.channel || '—'}</td><td><span class="inline-flex items-center gap-2"><FactionChip faction={line.faction} scores={factions} /><span class="font-medium">{shownName(line)}</span></span></td><td class="break-words">{line.text}</td></tr>
 						{:else}
-							<tr><td colspan="4">{archiveLoading ? 'Loading…' : archiveError ? 'Could not load archived chat.' : 'No archived chat available for this match.'}</td></tr>
+							<tr><td colspan="4">{archiveLoading ? 'Loading…' : archiveError ? 'Could not load archived chat.' : archiveLines.length ? 'Nothing matches the current filter.' : 'No archived chat available for this match.'}</td></tr>
 						{/each}
 					</tbody>
 				</table></div>
