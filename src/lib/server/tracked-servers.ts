@@ -2,7 +2,7 @@ import { getEnv } from '$lib/server/env';
 
 export interface TrackedServer {
 	id: string;
-	key?: string;
+	key: string;
 	name: string;
 	map: string;
 	lighting: string;

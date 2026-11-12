@@ -1,8 +1,9 @@
-import { json } from '@sveltejs/kit';
+import { apiJson, route } from '$lib/server/http';
+import { requireUser } from '$lib/server/access';
 import { fetchTrackedServers } from '$lib/server/tracked-servers';
-import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async () => {
+export const GET = route(async ({ locals }) => {
+	requireUser(locals);
 	const tracked = await fetchTrackedServers();
-	return json(tracked);
-};
+	return apiJson(tracked);
+});

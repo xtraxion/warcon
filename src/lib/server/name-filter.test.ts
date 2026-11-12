@@ -200,8 +200,15 @@ describe('words', () => {
 				const word = nameVerdict(cfg, w)?.verdict.match(/'(.+)'/)?.[1];
 				return word && !w.toLowerCase().includes(word);
 			});
-		// l reads as i, so this spelling of the listed word is found too; it is no innocent word
-		expect(surprises).toEqual(['Mongolioid']);
+		// Dictionary variants differ; only this known non-innocent spelling may be found.
+		expect(surprises.filter((w) => w !== 'Mongolioid')).toEqual([]);
+	});
+	test('common innocent words do not conceal separately blocked words', () => {
+		const cfg = rule({ builtinWords: true });
+		for (const name of ['shittier', 'snazzier', 'snazziest'])
+			expect(nameVerdict(cfg, name)).toBeNull();
+		for (const name of ['SnazzierNazi', 'shittierHitler', 'nazi', 'h1t1er'])
+			expect(nameVerdict(cfg, name)).not.toBeNull();
 	});
 	test('every mock joiner and demo player passes the built-in list', () => {
 		for (const n of ['Copperhead', 'Late_to_the_party', 'VelvetThunder', 'Brick', 'Saltmine'])

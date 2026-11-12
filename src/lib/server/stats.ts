@@ -39,15 +39,15 @@ export async function deleteMatch(
 			LIMIT 1
 		`);
 		const gameMatchId = eventRow?.match_id ?? null;
-		const [killsRes] = await tx.execute<{ n: string }>(sql`
+		const [killsRes] = (await tx.execute(sql`
 			WITH d AS (DELETE FROM kills WHERE match_row = ${matchId} RETURNING 1)
 			SELECT COUNT(*) AS n FROM d
-		`);
-		const [playersRes] = await tx.execute<{ n: string }>(sql`
+		`)) as unknown as { n: string }[];
+		const [playersRes] = (await tx.execute(sql`
 			WITH d AS (DELETE FROM match_players WHERE match_id = ${matchId} RETURNING 1)
 			SELECT COUNT(*) AS n FROM d
-		`);
-		let eventsRes = { n: '0' };
+		`)) as unknown as { n: string }[];
+		let eventsRes: Record<string, any> = { n: '0' };
 		if (gameMatchId) {
 			[eventsRes] = await tx.execute<{ n: string }>(sql`
 				WITH d AS (DELETE FROM match_events WHERE server_id = ${server.id} AND match_id = ${gameMatchId} RETURNING 1)
@@ -113,7 +113,7 @@ export async function deleteMatchesWithZeroPlayers(
 				WITH d AS (DELETE FROM match_players WHERE match_id = ${matchId} RETURNING 1)
 				SELECT COUNT(*) AS n FROM d
 			`);
-			let eventsRes = { n: '0' };
+			let eventsRes: Record<string, any> = { n: '0' };
 			if (gameMatchId) {
 				[eventsRes] = await tx.execute<{ n: string }>(sql`
 					WITH d AS (DELETE FROM match_events WHERE server_id = ${server.id} AND match_id = ${gameMatchId} RETURNING 1)

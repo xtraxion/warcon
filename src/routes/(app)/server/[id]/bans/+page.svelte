@@ -23,13 +23,13 @@
 	let tab = $derived(data.tab || 'bans');
 
 	interface Kick {
-		id: bigint;
-		ts: string;
+		id: number;
+		ts: Date;
 		actorName: string;
 		target: string;
 		reason: string;
 		message: string;
-		outcome: string;
+		outcome: 'ok' | 'error' | 'denied';
 	}
 	let kicks = $derived<Kick[]>(data.kicks || []);
 

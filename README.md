@@ -2180,8 +2180,6 @@ which a key cannot hold, and `chatTermsAccept` is for an owner of the organisati
 This fork adds the following features beyond upstream:
 
 ### Automation
-- **AFK Protection**: kick and respawn specific players after a random time window and cash increase
-- **Cash Watch**: timer-based respawn trigger for AFK Protection
 - **Death whisper**: whisper players while they wait to respawn (upstream feature, merged)
 
 ### Dashboard & Overview

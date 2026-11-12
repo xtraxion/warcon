@@ -4,7 +4,7 @@
 // per-boot instance id. Not a panel route: no session, no API key, no CSRF header
 // (hooks.server.ts exempts the path).
 import { getEnv } from '$lib/server/env';
-import { ApiError, apiJson, clientIp, route } from '$lib/server/http';
+import { ApiError, apiJson, clientIp, forLog, route } from '$lib/server/http';
 import { assertRate } from '$lib/server/ratelimit';
 import { gateway } from '$lib/server/gateway';
 import { ingestBatch, resolveFeedToken } from '$lib/server/feed';
@@ -13,7 +13,6 @@ import { feedKills, feedPosts } from '$lib/server/metrics';
 import { getServer } from '$lib/server/access';
 import { queueEvent } from '$lib/server/json-webhook-queue';
 import { killFeedBatch } from '$lib/server/json-webhook-events';
-import { forwardToRelays } from '$lib/server/feed-relay';
 
 /** The game sends about thirty posts a minute at most; a host stuck in a loop is cut off here. */
 const POSTS_PER_MINUTE = 1200;
@@ -50,7 +49,7 @@ export const POST = route(async (event) => {
 	if (r.kills.length) gateway().killsIngested(env, serverId, r.kills);
 	// The match's state for the live view, its result for the match the worker closes.
 	if (r.state || r.end) gateway().matchFeed(env, serverId, { state: r.state, end: r.end });
-	// Forward the batch to any org webhook that ticks kill_feed, and to per-server relays.
+	// Forward the batch to any org webhook that ticks kill_feed.
 	const server = await getServer(env, serverId);
 	if (server) {
 		const batch = (body as { serverId?: string; serverName?: string; events?: unknown[] }) || {};
@@ -64,10 +63,8 @@ export const POST = route(async (event) => {
 					events: Array.isArray(batch.events) ? batch.events : []
 				}
 			}));
-			// Also fire-and-forget to per-server relays.
-			void forwardToRelays(env, server.id, { serverId: server.id, serverName: server.name, events: batch.events || [] });
 		} catch (e) {
-			console.error('[warcon] kill feed batch queueEvent', e);
+			console.error('[warcon] kill feed batch queueEvent', forLog(e));
 		}
 	}
 	return apiJson({

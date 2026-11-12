@@ -96,7 +96,8 @@ describe('the scoreboard by side', () => {
 			peakPlayers: 6,
 			players: 6,
 			finalScores,
-			winner: finalScores?.length ? finalScores[0].name : null
+			winner: finalScores?.length ? finalScores[0].name : null,
+			hasData: true
 		},
 		factions: factions.map((name) => ({ name, colorHex: null }))
 	});

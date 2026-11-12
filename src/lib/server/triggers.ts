@@ -914,9 +914,6 @@ export async function evaluateTriggers(
 				case 'afk_watch':
 					await evalAfkWatch(ctx, row, row.config as AfkWatchConfig, out, read);
 					break;
-				case 'cash_watch':
-					await evalCashWatch(ctx, row, row.config as CashWatchConfig, out);
-					break;
 				case 'bounty':
 					// Kills move it on as they arrive (feed-events.ts); a look ends it.
 					evalBounty(env, ctx, row, row.config as BountyConfig, out);
@@ -1827,9 +1824,6 @@ const afkWatchMemory = new Map<string, { key: string; state: AfkWatchState; note
 const AFK_WATCH_FORGET_MS = 3600_000;
 let afkWatchSweptAt = 0;
 
-const cashWatchMemory = new Map<string, { state: CashWatchState; note: string }>();
-let cashWatchSweptAt = 0;
-
 async function evalAfkWatch(
 	ctx: TickContext,
 	row: TriggerRow,
@@ -1862,7 +1856,7 @@ async function evalAfkWatch(
 		now,
 		live:
 			!ctx.matchEnd &&
-			count <= cfg.maxPlayers &&
+			count >= cfg.minPlayers &&
 			(ctx.status.scores ?? []).some((s) => s.score > 0),
 		// A rule that spares reserved slots acts on nobody until the worker has read who holds one
 		// (the first look after a start reads the list only after the rules): what falls due waits.
@@ -1970,74 +1964,6 @@ async function evalAfkWatch(
  * meanwhile; a look whose write fails leaves it open on the rule's row only, where a restart reads
  * it back and the next look or claim lapses it (a claim checks the bounty's match).
  */
-
-async function evalCashWatch(
-	ctx: TickContext,
-	row: TriggerRow,
-	cfg: CashWatchConfig,
-	out: Evaluation
-) {
-	if (!ctx.playersObserved) return;
-	const now = ctx.ts.getTime();
-	if (now - cashWatchSweptAt >= 60_000) {
-		cashWatchSweptAt = now;
-		for (const [id, m] of cashWatchMemory)
-			if (now - m.state.at > 30 * 60_000) cashWatchMemory.delete(id);
-	}
-	const count = Math.max(ctx.status.playerCount || 0, ctx.players.length);
-
-	// Global conditions: must have targets, live match, and strictly below maxPlayers
-	if (!cfg.targets.length) return;
-	if (ctx.matchEnd) return;
-	if (count >= cfg.maxPlayers) return;
-	if (!(ctx.status.scores ?? []).some((s) => s.score > 0)) return;
-
-	const byId = new Map(ctx.players.map((p) => [p.steamId, p]));
-	const say = (text: string, p: any) => renderTemplate(text, vars(ctx, p, null, {}), MAX_CHAT);
-	const seen = (p: Player) => ({ cash: p.cash });
-
-	for (const steamId of cfg.targets) {
-		const key = `${row.id}:${steamId}`;
-		const memory = cashWatchMemory.get(key);
-		const prev = memory && !ctx.recovered ? memory.state : null;
-		const p = byId.get(steamId);
-
-		if (!p) {
-			cashWatchMemory.delete(key);
-			continue;
-		}
-
-		const step = cashWatchStep(cfg, prev, {
-			now,
-			live: true,
-			count,
-			players: [{ steamId: p.steamId, cash: p.cash, spared: false }]
-		});
-
-		const note = step.act.length ? '' : (memory?.note ?? step.held);
-
-		for (const d of step.act) {
-			const player = byId.get(d.steamId);
-			if (!player) continue;
-			out.intents.push({
-				trigger: row,
-				action: RULE_KILL,
-				params: {
-					steamId: player.steamId,
-					name: player.name,
-					why: 'Cash watch: no cash earned in random window',
-					message: say(cfg.killMessage, player),
-					seen: seen(player)
-				}
-			});
-		}
-
-		cashWatchMemory.set(key, {
-			state: step.next ?? { at: now, cash: p.cash, dueAt: cashWatchDueAt(now, cfg) },
-			note
-		});
-	}
-}
 
 function evalBounty(
 	env: Env,
@@ -2605,12 +2531,6 @@ export async function dryRun(
 	if (kind === 'afk_watch') {
 		result.notes.push(
 			"Players' kills, deaths and cash are not kept look by look, so idle stretches cannot be replayed. Set the rule to alert only to see live whom it would kick, under Actions and on Discord, without kicking anyone."
-		);
-		return result;
-	}
-	if (kind === 'cash_watch') {
-		result.notes.push(
-			"Cash is not kept look by look, so cash-earning stretches cannot be replayed. The live rule checks each target player on every fresh player-list sample and resets their timer when their cash rises."
 		);
 		return result;
 	}

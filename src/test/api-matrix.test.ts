@@ -41,6 +41,7 @@ const NOT_ROLE_BASED = [
 const PER_LIST = 'lists:[kind]';
 
 const MATRIX: Record<string, Policy | typeof PER_LIST> = {
+	'GET api/tracked-servers': 'user',
 	'GET api/actions': 'user',
 	'GET api/audit': 'user',
 	'GET api/audit/export': 'user',
@@ -137,6 +138,8 @@ const MATRIX: Record<string, Policy | typeof PER_LIST> = {
 	'POST api/servers/[id]/feed': 'manager',
 	'DELETE api/servers/[id]/feed': 'manager',
 	'POST api/servers/[id]/stats/purge': 'manager',
+	'DELETE api/servers/[id]/matches': 'manager',
+	'DELETE api/servers/[id]/matches/[matchId]': 'manager',
 	'GET api/servers/[id]/grants': 'manager',
 	'PUT api/servers/[id]/grants': 'manager',
 

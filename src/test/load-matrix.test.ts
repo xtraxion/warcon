@@ -27,6 +27,7 @@ const FROM_PARENT = [
 ];
 
 const MATRIX: Record<string, Policy> = {
+	'+page.server.ts': 'user',
 	'account/+page.server.ts': 'user',
 	'audit/+page.server.ts': 'user',
 	'admin/+layout.server.ts': 'site',

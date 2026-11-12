@@ -274,8 +274,9 @@ describe('saneScores', () => {
 
 	test('factionColor falls back rather than pass a hostile colour on', () => {
 		expect(factionColor('Lonestar', [{ name: 'Lonestar', colorHex: HOSTILE, score: 0 }])).toBe(
-			'#5E5E66'
+			'#5B95D8'
 		);
+		expect(factionColor('Unknown', [{ name: 'Unknown', colorHex: HOSTILE, score: 0 }])).toBe('#5E5E66');
 		expect(factionColor('Valkyra', [{ name: 'Valkyra', colorHex: '#D86060', score: 0 }])).toBe(
 			'#D86060'
 		);

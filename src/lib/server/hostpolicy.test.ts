@@ -103,7 +103,7 @@ describe('assertReachableTarget', () => {
 		});
 		await expect(assertReachableTarget('localhost', true)).resolves.toBeTruthy();
 		await expect(
-			assertReachableTarget('definitely-not-a-real-host.invalid', true)
+			assertReachableTarget('definitely-not-a-real-host.invalid.', true)
 		).rejects.toMatchObject({ code: 'unresolvable' });
 	});
 });

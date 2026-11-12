@@ -28,7 +28,8 @@ describe('validateConfig', () => {
 	test('welcome needs a message and trims it to the 256 characters the game takes', () => {
 		expect(() => validateConfig('welcome', { message: '  ' })).toThrow('empty');
 		const c = validateConfig('welcome', { message: 'x'.repeat(300), onlyFirstVisit: 'yes' });
-		expect(c).toEqual({ message: 'x'.repeat(256), onlyFirstVisit: true, afterFaction: false });
+		expect(c).toEqual({ message: 'x'.repeat(256), onlyFirstVisit: true, afterFaction: false, delaySeconds: 0, followUpMessage: '' });
+		expect(validateConfig('welcome', { message: 'hi', delaySeconds: 30, followUpMessage: 'next' })).toMatchObject({ delaySeconds: 30, followUpMessage: 'next' });
 		expect(validateConfig('welcome', { message: 'hi', afterFaction: 1 })).toMatchObject({
 			afterFaction: true
 		});
@@ -145,6 +146,7 @@ describe('validateConfig', () => {
 			maxPingMs: 200,
 			durationSeconds: 60,
 			spareReserved: false,
+			minPlayers: 1,
 			reason: 'Ping too high for too long.'
 		});
 		expect(() => validateConfig('ping_kick', { maxPingMs: 0 })).toThrow('ping limit');
@@ -217,7 +219,7 @@ describe('validateConfig', () => {
 });
 
 describe('pingKickStep', () => {
-	const cfg = { maxPingMs: 200, durationSeconds: 30, reason: 'High ping' };
+	const cfg = { maxPingMs: 200, durationSeconds: 30, minPlayers: 1, reason: 'High ping' };
 	const high = [{ steamId: 'a', ping: 250 }];
 	const step = (state: Parameters<typeof pingKickStep>[1], players: typeof high, now: number) =>
 		pingKickStep(cfg, state, players, now, 5000);

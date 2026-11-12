@@ -1056,7 +1056,7 @@ async function finish(env: Env, row: OutboxRow, state: Outcome, outcome: string)
 				tx.delete(outbox).where(eq(outbox.id, row.id))
 			);
 		} catch (err) {
-			console.error('[warcon] welcome outbox cleanup', err);
+			console.error('[warcon] welcome outbox cleanup', forLog(err));
 		}
 	}
 	// A panel action (a grant, a ban, a flag) can be delivered before the roster is in memory:
