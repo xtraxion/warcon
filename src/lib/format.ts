@@ -92,8 +92,7 @@ export const initials = (name: string): string =>
 export const MAP_DISPLAY: Record<string, string> = {
 	Kavkazi: 'Bakurani',
 	Europe: 'Ozeti',
-	NorthAmerica: 'Zestafona',
-	Russia: 'Sabatulo'
+	NorthAmerica: 'Zestafona'
 };
 /**
  * The catalog id of a map however it was named: the status route gives the id ("NorthAmerica"),
