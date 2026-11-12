@@ -104,7 +104,7 @@
 					<thead><tr><th>Time</th><th>Channel</th><th>Player</th><th>Message</th></tr></thead>
 					<tbody>
 						{#each archiveLines as line, index (index)}
-							<tr><td>{line.at ? fmtTime(line.at) : '—'}</td><td>{line.channel || '—'}</td><td>{shownName(line)}</td><td class="break-words">{line.text}</td></tr>
+							<tr><td>{line.at ? fmtTime(line.at) : '—'}</td><td>{line.channel || '—'}</td><td><span class="inline-flex items-center gap-2"><FactionChip faction={line.faction} scores={factions} /><span class="font-medium">{shownName(line)}</span></span></td><td class="break-words">{line.text}</td></tr>
 						{:else}
 							<tr><td colspan="4">{archiveLoading ? 'Loading…' : archiveError ? 'Could not load archived chat.' : 'No archived chat available for this match.'}</td></tr>
 						{/each}
