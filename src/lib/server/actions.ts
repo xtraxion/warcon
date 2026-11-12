@@ -477,12 +477,17 @@ export const ACTIONS: Record<string, ActionDef> = {
 	maps: {
 		cap: 'server.view',
 		mutating: false,
-		run: async (c) => ({
-			maps: ((await c.json('GET', '/v1/catalog/maps')).maps || []).map((m: any) => ({
+		run: async (c) => {
+			const maps = ((await c.json('GET', '/v1/catalog/maps')).maps || []).map((m: any) => ({
 				id: m.id,
 				display: m.displayName || m.id
-			}))
-		})
+			}));
+			// FORK: Season 3 map Russia/Sabatulo — the game build's RCON catalog does not
+			// report it yet (remove once it does upstream).
+			if (!maps.some((m: any) => m.id === 'Russia'))
+				maps.push({ id: 'Russia', display: 'Sabatulo' });
+			return { maps };
+		}
 	},
 	lightings: {
 		cap: 'server.view',
@@ -505,9 +510,18 @@ export const ACTIONS: Record<string, ActionDef> = {
 				return { experiences: all };
 			}
 			const names = new Map(all.map((e: any) => [e.id, e.display]));
-			const ids =
-				(await c.json('GET', `/v1/catalog/maps/${encodeURIComponent(str(p.map, 100))}/experiences`))
-					.experiences || [];
+			const mapIdQ = str(p.map, 100);
+			let ids: string[];
+			try {
+				ids =
+					(await c.json('GET', `/v1/catalog/maps/${encodeURIComponent(mapIdQ)}/experiences`))
+						.experiences || [];
+			} catch (err) {
+				// FORK: Russia/Sabatulo is playable but absent from the RCON allowed-maps
+				// catalog; the mode ids are known from Season 3 rotation configs.
+				if (mapIdQ !== 'Russia') throw err;
+				ids = ['Moscow_KOTH_01'];
+			}
 			return { experiences: ids.map((id: string) => ({ id, display: names.get(id) || id })) };
 		}
 	},
