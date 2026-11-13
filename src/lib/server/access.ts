@@ -450,6 +450,7 @@ export type ServerSummary = {
 	demo: boolean;
 	publicStatus: boolean;
 	publicLeaderboards: boolean;
+	chatArchive: boolean;
 	publicKills: boolean;
 	/** an owner's own restart time (UTC); null: the game decides */
 	restartSchedule: ManualRestart | null;
@@ -479,6 +480,7 @@ export function shapeServer(
 		demo: isDemoServer(env, s),
 		publicStatus: s.publicStatus,
 		publicLeaderboards: s.publicLeaderboards,
+		chatArchive: s.chatArchive,
 		publicKills: s.publicKills,
 		restartSchedule: readManualRestart(s.restartSchedule),
 		allowPublicStatus: org.allowPublicStatus,

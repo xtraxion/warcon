@@ -1,0 +1,1 @@
+ALTER TABLE "servers" ADD COLUMN "chat_archive" boolean DEFAULT false NOT NULL;

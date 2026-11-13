@@ -447,6 +447,20 @@
       "when": 1794523144740,
       "tag": "0055_tan_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1794609262986,
+      "tag": "0056_conscious_black_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1794610521599,
+      "tag": "0057_living_millenium_guard",
+      "breakpoints": true
     }
   ],
   "dialect": "postgresql"

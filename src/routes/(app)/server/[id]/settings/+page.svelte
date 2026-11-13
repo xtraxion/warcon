@@ -1,6 +1,7 @@
 <script lang="ts">
 	// Settings that belong to the panel's record of this server rather than to the game: the
 	// Discord channels carrying its card or team kills, the public pages, and when it restarts.
+	import ChatArchive from './ChatArchive.svelte';
 	import DiscordChannels from './DiscordChannels.svelte';
 	import PublicPages from './PublicPages.svelte';
 	import RestartSchedule from './RestartSchedule.svelte';
@@ -12,6 +13,7 @@
 
 <div class="space-y-4">
 	<DiscordChannels {data} />
+	<ChatArchive {data} />
 	<PublicPages {data} />
 	<RestartSchedule {data} />
 	{#if data.server.manager}<StatsPurge {data} />{/if}

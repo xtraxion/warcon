@@ -295,6 +295,9 @@ export async function updateServer(
 			throw new ApiError(400, 'The restart time is not valid: a UTC time from 00:00 to 23:59.');
 		set.restartSchedule = own;
 	}
+	// A copy of the game's chat, kept seven days for moderation: only where an owner asks
+	// for it, and then only for that server.
+	if (body.chatArchive !== undefined) set.chatArchive = body.chatArchive === true;
 	if (typeof body.password === 'string' && body.password)
 		set.passwordEnc = encryptSecret(env, body.password);
 	if (!Object.keys(set).length) throw new ApiError(400, 'Nothing to update.');
@@ -322,6 +325,7 @@ export async function updateServer(
 			...t,
 			publicStatus: set.publicStatus,
 			publicLeaderboards: set.publicLeaderboards,
+			chatArchive: set.chatArchive,
 			publicKills: set.publicKills,
 			restartSchedule: set.restartSchedule,
 			credentialRotated: !!body.password

@@ -7,6 +7,16 @@ import type { WardogsClient } from './rcon';
 import { withOwnedTransaction } from './leadership';
 
 export const RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * Whether the worker may keep a copy of the game's chat for this server: only where an
+ * owner asked for it. The game's chat terms forbid recording the chat beyond what
+ * moderating the server requires, so the archive is off unless a server's owner turns it
+ * on, and then only for seven days and for moderation.
+ */
+export function archiveWanted(server: { chatArchive?: boolean | null }): boolean {
+	return server.chatArchive === true;
+}
 export function eligibleLine(line: ChatLine, now: number): boolean {
 	if (!line.at) return false;
 	const time = Date.parse(line.at);
