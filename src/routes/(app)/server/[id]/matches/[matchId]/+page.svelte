@@ -92,6 +92,7 @@
 	);
 	const causeText = (k: KillView) =>
 		causeLabel(k.cause) || (k.tags.includes('Falling') ? 'Fall' : '—');
+	const canArchive = $derived(data.server.caps.some((cap: string) => cap === 'chat.archive.read'));
 </script>
 
 <div class="panel">
@@ -99,39 +100,44 @@
 		>← Matches</a
 	>
 	<div class="mt-3">
-		<MatchPanel {view} hrefFor={dossier} showIds />
+		<MatchPanel {view} hrefFor={dossier} showIds>
+			{#snippet headerAction()}
+				{#if canArchive}
+					<button class="btn btn-sm" onclick={toggleArchive} aria-expanded={archiveOpen}>
+						{archiveOpen ? 'Close archived chat' : 'Archived Chats'}
+					</button>
+				{/if}
+			{/snippet}
+			{#snippet headerBlock()}
+				{#if canArchive && archiveOpen}
+					<section class="mt-4" aria-label="Archived chat">
+						<p class="note">Archived chat is retained for up to seven days.</p>
+						<div class="mb-3 flex flex-wrap items-center gap-3">
+							<select class="input w-36" aria-label="Channel" bind:value={archiveChannel}>
+								<option value="">All channels</option>
+								{#each archiveChannelOptions as c (c)}<option value={c}>{c}</option>{/each}
+							</select>
+							<input class="input w-full sm:w-64" type="search" placeholder="Filter by name, text or SteamID…" aria-label="Filter chat lines" bind:value={archiveSearch} />
+							<span class="ml-auto text-[12.5px] text-mist-600">{archiveRows.length} of {archiveLines.length} loaded lines{archiveCursor ? ' · load more to search the rest' : ''}</span>
+						</div>
+						{#if archiveError}<div class="callout border-danger/30 bg-danger/12">{archiveError}</div>{/if}
+						<div class="table-wrap"><table>
+							<thead><tr><th>Time</th><th>Channel</th><th>Player</th><th>Message</th></tr></thead>
+							<tbody>
+								{#each archiveRows as line, index (index)}
+									<tr><td>{line.at ? fmtTime(line.at) : '—'}</td><td>{line.channel || '—'}</td><td><span class="inline-flex items-center gap-2"><FactionChip faction={line.faction} scores={factions} /><span class="font-medium">{shownName(line)}</span></span></td><td class="break-words">{line.text}</td></tr>
+								{:else}
+									<tr><td colspan="4">{archiveLoading ? 'Loading…' : archiveError ? 'Could not load archived chat.' : archiveLines.length ? 'Nothing matches the current filter.' : 'No archived chat available for this match.'}</td></tr>
+								{/each}
+							</tbody>
+						</table></div>
+						{#if archiveCursor}<button class="mt-3 btn" disabled={archiveLoading} onclick={() => loadArchive(true)}>Load more</button>{/if}
+						{#if archiveError}<button class="mt-3 btn" disabled={archiveLoading} onclick={() => loadArchive(false)}>Retry</button>{/if}
+					</section>
+				{/if}
+			{/snippet}
+		</MatchPanel>
 	</div>
-	{#if data.server.caps.some((cap: string) => cap === 'chat.archive.read')}
-		<button class="mt-4 btn" onclick={toggleArchive} aria-expanded={archiveOpen}>
-			{archiveOpen ? 'Close archived chat' : 'Read archived chat'}
-		</button>
-		{#if archiveOpen}
-			<section class="mt-3" aria-label="Archived chat">
-				<p class="note">Archived chat is retained for up to seven days.</p>
-				<div class="mb-3 flex flex-wrap items-center gap-3">
-					<select class="input w-36" aria-label="Channel" bind:value={archiveChannel}>
-						<option value="">All channels</option>
-						{#each archiveChannelOptions as c (c)}<option value={c}>{c}</option>{/each}
-					</select>
-					<input class="input w-full sm:w-64" type="search" placeholder="Filter by name, text or SteamID…" aria-label="Filter chat lines" bind:value={archiveSearch} />
-					<span class="ml-auto text-[12.5px] text-mist-600">{archiveRows.length} of {archiveLines.length} loaded lines{archiveCursor ? ' · load more to search the rest' : ''}</span>
-				</div>
-				{#if archiveError}<div class="callout border-danger/30 bg-danger/12">{archiveError}</div>{/if}
-				<div class="table-wrap"><table>
-					<thead><tr><th>Time</th><th>Channel</th><th>Player</th><th>Message</th></tr></thead>
-					<tbody>
-						{#each archiveRows as line, index (index)}
-							<tr><td>{line.at ? fmtTime(line.at) : '—'}</td><td>{line.channel || '—'}</td><td><span class="inline-flex items-center gap-2"><FactionChip faction={line.faction} scores={factions} /><span class="font-medium">{shownName(line)}</span></span></td><td class="break-words">{line.text}</td></tr>
-						{:else}
-							<tr><td colspan="4">{archiveLoading ? 'Loading…' : archiveError ? 'Could not load archived chat.' : archiveLines.length ? 'Nothing matches the current filter.' : 'No archived chat available for this match.'}</td></tr>
-						{/each}
-					</tbody>
-				</table></div>
-				{#if archiveCursor}<button class="mt-3 btn" disabled={archiveLoading} onclick={() => loadArchive(true)}>Load more</button>{/if}
-				{#if archiveError}<button class="mt-3 btn" disabled={archiveLoading} onclick={() => loadArchive(false)}>Retry</button>{/if}
-			</section>
-		{/if}
-	{/if}
 	{#if view.kills}
 		<span class="mt-4 field-label">Kill feed · {view.kills}</span>
 		<div class="table-wrap">

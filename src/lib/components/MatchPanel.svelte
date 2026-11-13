@@ -4,6 +4,7 @@
 	// scoreboard: one table per side, the winner first, then anyone never on a side; one sort
 	// orders them all, kills first, and on a wide screen their columns line up. The page renders
 	// the match's kill feed under it.
+	import type { Snippet } from 'svelte';
 	import SortHeader from '$lib/components/SortHeader.svelte';
 	import ScoreTimeline from '$lib/components/ScoreTimeline.svelte';
 	import { fmtCash } from '$lib/cash';
@@ -23,12 +24,18 @@
 	let {
 		view,
 		hrefFor,
-		showIds = false
+		showIds = false,
+		headerAction,
+		headerBlock
 	}: {
 		view: MatchView;
 		/** where a player's name goes: the dossier, or the public career */
 		hrefFor: (steamId: string) => string;
 		showIds?: boolean;
+		/** a control shown next to the map's name, in the header's own row */
+		headerAction?: Snippet;
+		/** a block shown under the header and above the scores */
+		headerBlock?: Snippet;
 	} = $props();
 
 	const NO_CATALOG = { maps: [], lightings: [], experiences: [] };
@@ -71,7 +78,10 @@
 
 <div class="flex flex-wrap items-end justify-between gap-3">
 	<div class="min-w-0">
-		<h2 class="text-2xl font-semibold">{mapName(m.map)}</h2>
+		<div class="flex flex-wrap items-center gap-3">
+			<h2 class="text-2xl font-semibold">{mapName(m.map)}</h2>
+			{@render headerAction?.()}
+		</div>
 		<div class="mt-1 caps text-mist-400">
 			{#if mode}{mode} ·
 			{/if}Started {fmtTime(m.startedAt)} · {fmtLength(length)} · {fmtNum(m.peakPlayers)} at peak · {fmtNum(
@@ -92,6 +102,8 @@
 		<div class="caps text-mist-600">Abandoned: closed by a restart, no result</div>
 	{/if}
 </div>
+
+{@render headerBlock?.()}
 
 {#if scores.length}
 	<div
