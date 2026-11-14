@@ -65,7 +65,9 @@ describe.skipIf(!hasTestDb)('what a rule’s whisper or kick records', () => {
 				.values({
 					serverId: w.server.id,
 					triggerName: 'Welcome whisper',
-					triggerKind: 'welcome',
+					// fork: the outbox removes 'welcome' rows once they are terminal (see finish() in
+				// src/lib/server/outbox.ts), so the fixture uses a kind that is kept.
+				triggerKind: 'ping',
 					action,
 					params: action === 'broadcast' ? params : { steamId: OWL.steamId, ...params },
 					target: action === 'broadcast' ? 'everyone' : OWL.steamId,
