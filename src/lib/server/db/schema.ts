@@ -424,6 +424,12 @@ export const servers = pgTable('servers', {
 	/** the public status page also shows the last kills (needs the feed and the status page on) */
 	publicKills: boolean('public_kills').notNull().default(false),
 	/**
+	 * Whether the worker keeps a copy of the game's chat for this server, seven days long,
+	 * for moderation ($lib/server/chat-archive). Off unless an owner asks for it: a game's
+	 * chat is not to be read or kept without reason (the game's chat terms).
+	 */
+	chatArchive: boolean('chat_archive').notNull().default(false),
+	/**
 	 * An owner's own restart time, `{ time: 'HH:MM' }` (UTC, $lib/uptime's ManualRestart), used
 	 * instead of the game's: null = the game decides (RestartTimeUtc, else 24 hours up).
 	 */
@@ -535,6 +541,14 @@ export const playerSessions = pgTable(
 		serverId: text('server_id').notNull(),
 		steamId: text('steam_id').notNull(),
 		name: text('name').notNull(),
+		/** the name the other players saw in place of `name`, once the player was seen in the game's
+		 *  anonymous mode during the session (the last one seen); null for a session never seen so.
+		 *  It stays when they leave the mode: `anonymous` says whether they were in it at the end.
+		 *  In no index: the heartbeat rewrites the row, and searches read it with the names. */
+		hiddenName: text('hidden_name'),
+		/** whether the last look of the session saw the player in anonymous mode: what a public page
+		 *  goes by for a player who has left the list ($lib/anonymous) */
+		anonymous: boolean('anonymous').notNull().default(false),
 		faction: text('faction'),
 		joinedAt: ts('joined_at').notNull(),
 		lastSeen: ts('last_seen').notNull(),
@@ -746,6 +760,10 @@ export const matchPlayers = pgTable(
 		steamId: text('steam_id').notNull(),
 		/** the name at the last look */
 		name: text('name').notNull(),
+		/** the name the other players saw in place of `name` during the match, for a player seen
+		 *  in the game's anonymous mode at any look of it (the last one seen); null otherwise. The
+		 *  match's public page goes by it. */
+		hiddenName: text('hidden_name'),
 		/** the last side seen that was a team on the scoreboard */
 		faction: text('faction'),
 		/** time on during the match */
@@ -966,7 +984,9 @@ export const triggers = pgTable(
 				'live_name',
 				'restart_skip',
 				'weather_cycle',
-				'death_whisper'
+				'death_whisper',
+				'chat_command',
+				'staff_call'
 			]
 		}).notNull(),
 		name: text('name').notNull(),
@@ -1005,6 +1025,12 @@ export const webhooks = pgTable(
 		triggerKinds: jsonb('trigger_kinds'),
 		/** null = every server in the org */
 		serverIds: jsonb('server_ids'),
+		/**
+		 * the Discord roles a Staff call's card pings in this channel: their IDs, a list of digit
+		 * strings ($lib/discord-role), five at most; null or empty = no ping. An owner of the org
+		 * sets them, as they do the address.
+		 */
+		staffRoleIds: jsonb('staff_role_ids'),
 		enabled: boolean('enabled').notNull().default(true),
 		/** keep a live status message per covered server, edited in place; see webhook-status.ts */
 		statusEnabled: boolean('status_enabled').notNull().default(false),

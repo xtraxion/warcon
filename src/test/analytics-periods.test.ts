@@ -249,7 +249,10 @@ describe.skipIf(!hasTestDb)('players and sessions per period', () => {
 	});
 
 	test('a zone Postgres does not know, or none, cuts the days in UTC', async () => {
-		expect(await timeZone(env, 'Asia/Calcutta')).toBe('Asia/Calcutta');
+		// fork: tzdata renamed Asia/Calcutta to Asia/Kolkata; the zone Postgres knows
+		// is returned as it is, and a zone it does not know falls back to UTC.
+		expect(await timeZone(env, 'Asia/Kolkata')).toBe('Asia/Kolkata');
+		expect(await timeZone(env, 'Not/AZone')).toBe('UTC');
 		expect(await timeZone(env, 'Europe/Kyiv')).toBe('Europe/Kyiv');
 		for (const bad of [null, '', 'Mars/Olympus_Mons', "UTC'; SELECT 1; --", 'x'.repeat(65)])
 			expect(await timeZone(env, bad)).toBe('UTC');
