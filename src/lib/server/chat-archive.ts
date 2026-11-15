@@ -27,16 +27,80 @@ export function lineFingerprint(line: ChatLine): string {
 }
 /** Bounded game history is replayed oldest-first. If history exceeds the server buffer during an outage,
  * only retained messages can be recovered; the API has no external backfill source. */
-const cursors = new Map<string, { period: number; after: number; serverEpoch: number | null }>();
+/** What the collector remembers between two reads of one server's chat. */
+export interface ChatCursor {
+	/** the leadership period the place belongs to */
+	period: number;
+	/** the newest line the collector has read */
+	after: number;
+	/** the game's start, as its uptime says it; a new one is a new process */
+	serverEpoch: number | null;
+	/** what the line under the newest number says, so a replaced chat can be told from a quiet one */
+	anchor: string | null;
+}
+const cursors = new Map<string, ChatCursor>();
 // Uptime-derived start estimates jitter slightly between polls; require a meaningful change.
 const SERVER_RESTART_DRIFT_MS = 60_000;
 
-export async function collectChat(env: Env, client: WardogsClient, serverId: string, period: number, startedAt = 0): Promise<void> {
+/**
+ * What a line says about itself, in the parts that never change: its number, when it was sent
+ * and what it said. A player's name may be written differently later; this is not.
+ */
+export function lineAnchor(line: ChatLine): string {
+	return createHash('sha256')
+		.update(JSON.stringify([line.seq, line.at, line.text]))
+		.digest('hex');
+}
+
+/**
+ * Whether the place the collector kept is still the place the game keeps.
+ *
+ * The game's chat is a buffer of its own: a new map, a new process or a new world replaces it,
+ * and the new one numbers its lines from one again. Two things give that away, and the second
+ * is the one that matters:
+ *   - the game's newest number is below the place: the new chat has not yet reached the place;
+ *   - the line under the place is another one: the new chat has already numbered past the
+ *     place, and only what that line says tells the two apart. Without it the lines between the
+ *     new chat's start and the place are lost for good.
+ */
+export function chatPlaceKept(
+	place: { after: number; anchor: string | null },
+	read: { latestSeq: number | null; lines: ChatLine[] }
+): boolean {
+	// Nothing kept yet: nothing to compare against.
+	if (place.after <= 0) return true;
+	// The game numbers from the start again: its newest number is below the place.
+	if (read.latestSeq !== null && read.latestSeq < place.after) return false;
+	// The line under the place is another one: this is not the chat the place belongs to.
+	if (place.anchor) {
+		const under = read.lines.find((l) => l.seq === place.after);
+		if (under && lineAnchor(under) !== place.anchor) return false;
+	}
+	return true;
+}
+
+export async function collectChat(
+	env: Env,
+	client: WardogsClient,
+	serverId: string,
+	period: number,
+	startedAt = 0
+): Promise<void> {
 	const previous = cursors.get(serverId);
-	let after = previous?.period === period ? previous.after : 0;
 	const serverEpoch = startedAt > 0 ? startedAt : null;
-	if (previous && previous.period === period && previous.serverEpoch !== null && serverEpoch !== null && Math.abs(previous.serverEpoch - serverEpoch) > SERVER_RESTART_DRIFT_MS) {
+	// The place the collector keeps: the newest line it has read, and what the line under that
+	// number says.
+	let after = previous?.period === period ? previous.after : 0;
+	let anchor = previous?.period === period ? previous.anchor : null;
+	if (
+		previous &&
+		previous.period === period &&
+		previous.serverEpoch !== null &&
+		serverEpoch !== null &&
+		Math.abs(previous.serverEpoch - serverEpoch) > SERVER_RESTART_DRIFT_MS
+	) {
 		after = 0;
+		anchor = null;
 		cursors.delete(serverId);
 	}
 	// Retry pending entries independently of the gameserver buffer and its cursor.
@@ -60,18 +124,24 @@ export async function collectChat(env: Env, client: WardogsClient, serverId: str
 			 OR EXISTS (SELECT 1 FROM chat_archive a WHERE a.server_id = p.server_id AND a.fingerprint = p.fingerprint))`);
 	}, { period });
 	for (let page = 0; page < 20; page++) {
+		// The line under the place is asked for as well: it is the only sign that the game's chat
+		// was replaced while the collector was not looking, once the new chat has numbered past
+		// the place and the newest number says nothing any more.
+		const ask = page === 0 && after > 0 ? after - 1 : after;
 		let raw: unknown;
 		try {
-			raw = await client.json('GET', `/v1/chat?after=${after}&limit=${CHAT_MAX_LIMIT}`);
+			raw = await client.json('GET', `/v1/chat?after=${ask}&limit=${CHAT_MAX_LIMIT}`);
 		} catch (err) {
 			if (typeof err === 'object' && err !== null && 'status' in err && [404, 409].includes(Number(err.status))) return;
 			throw err;
 		}
 		const read = chatReadOf(raw);
 		if (!read) return;
-		// A game restart may reset its sequence. Re-read the retained buffer from zero.
-		if (read.latestSeq !== null && read.latestSeq < after) {
+		// The game's chat is another one: it numbers from one again, so the buffer is read from
+		// the start and nothing of the old chat is read as new.
+		if (!chatPlaceKept({ after, anchor }, read)) {
 			after = 0;
+			anchor = null;
 			cursors.delete(serverId);
 			continue;
 		}
@@ -79,7 +149,14 @@ export async function collectChat(env: Env, client: WardogsClient, serverId: str
 		const now = Date.now();
 		// Only dated lines can be assigned to a match. Future timestamps are queued too,
 		// with retention bounded by first observation, not by an untrusted future clock.
-		const lines = read.lines.filter((line) => !!line.at && Number.isFinite(Date.parse(line.at)) && Date.parse(line.at) >= now - RETENTION_MS);
+		// The place's own line is not written again: it is in the archive already.
+		const lines = read.lines.filter(
+			(line) =>
+				line.seq > after &&
+				!!line.at &&
+				Number.isFinite(Date.parse(line.at)) &&
+				Date.parse(line.at) >= now - RETENTION_MS
+		);
 		if (lines.length) await withOwnedTransaction(env, async (tx) => {
 			for (const line of lines) {
 				const at = new Date(line.at!);
@@ -116,7 +193,15 @@ export async function collectChat(env: Env, client: WardogsClient, serverId: str
 		const newest = read.lines[read.lines.length - 1].seq;
 		if (newest <= after) return;
 		// Persisted rows and the in-memory cursor advance only after the transaction succeeds.
-		cursors.set(serverId, { period, after: newest, serverEpoch: serverEpoch ?? previous?.serverEpoch ?? null });
+		// The anchor is what the line under the newest number says, so the next read can tell a
+		// chat that was replaced from one that merely went quiet.
+		cursors.set(serverId, {
+			period,
+			after: newest,
+			serverEpoch: serverEpoch ?? previous?.serverEpoch ?? null,
+			anchor: lineAnchor(read.lines[read.lines.length - 1])
+		});
+		anchor = lineAnchor(read.lines[read.lines.length - 1]);
 		if (!read.latestSeq || newest >= read.latestSeq || read.lines.length < CHAT_MAX_LIMIT) return;
 		after = newest;
 	}

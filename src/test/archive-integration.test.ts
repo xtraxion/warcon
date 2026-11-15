@@ -49,14 +49,16 @@ describe.skipIf(!hasTestDb)('archived chat integration', () => {
      await env.db.delete(matches).where(eq(matches.id,overlap.id));
      paths.length=0;
      await collectChat(env,client,server.id,ownershipPeriod());
-     expect(paths[0]).toContain('after=2');
+     // The place is 2, and the line under it is asked for as well, so a chat that was replaced
+     // under the same numbers can be told from the one the place belongs to.
+     expect(paths[0]).toContain('after=1');
      const rows=await env.db.select().from(chatArchive).where(eq(chatArchive.serverId,server.id));
      expect(rows.length).toBe(2);
      expect(rows.every(r=>r.matchId===one.id)).toBe(true);
      expect((await env.db.select().from(chatArchivePending).where(eq(chatArchivePending.serverId,server.id))).length).toBe(0);
      paths.length=0;
      await collectChat(env,client,server.id,ownershipPeriod());
-     expect(paths[0]).toContain('after=2');
+     expect(paths[0]).toContain('after=1');
      await env.db.delete(matches).where(eq(matches.id,one.id));
    } finally { await releaseOwnership(env); }
  });
@@ -73,14 +75,18 @@ describe.skipIf(!hasTestDb)('archived chat integration', () => {
     await collectChat(env,client,w.server.id,ownershipPeriod());
     await collectChat(env,client,w.server.id,ownershipPeriod());
     expect(paths).toContain('/v1/chat?after=500&limit=500');
-    expect(paths.at(-1)).toBe('/v1/chat?after=650&limit=500');
+    // The place is asked for one line earlier: the line under it comes with the read, and only
+    // what that line says tells a chat that was replaced from one that merely went quiet.
+    expect(paths.at(-1)).toBe('/v1/chat?after=649&limit=500');
     const restarted = Array.from({length:700}, (_,i) => ({seq:i+1,sentUtc:new Date(now-10000).toISOString(),channel:'Global',realName:'test',text:`restart ${i}`}));
     const restartPaths:string[]=[];
     const restartClient = {json:async (_method:string,path:string) => { restartPaths.push(path); const after=Number(new URL('http://test'+path).searchParams.get('after')); return {latestSeq:700,messages:restarted.filter(l=>l.seq>after).slice(0,500)}; }} as unknown as WardogsClient;
     await collectChat(env,restartClient,w.server.id,ownershipPeriod(), now-120000);
     restartPaths.length = 0;
     await collectChat(env,restartClient,w.server.id,ownershipPeriod(), now-115000);
-    expect(restartPaths).toEqual(['/v1/chat?after=700&limit=500']);
+    // The place is 700, and the line under it is asked for as well: only what that line says
+    // tells a chat that was replaced from the one the place belongs to.
+    expect(restartPaths).toEqual(['/v1/chat?after=699&limit=500']);
     restartPaths.length = 0;
     await collectChat(env,restartClient,w.server.id,ownershipPeriod(), now-1000);
     expect(restartPaths[0]).toBe('/v1/chat?after=0&limit=500');
